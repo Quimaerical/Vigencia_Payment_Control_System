@@ -1,0 +1,9 @@
+node_modules/
+.pnpm-store/
+dist/
+build/
+.env
+.DS_Store
+*.log
+docs/internal/
+internal/

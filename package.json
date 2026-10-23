@@ -1,0 +1,13 @@
+{
+  "name": "vigencia-payment-control-system",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c green,cyan \"pnpm --filter @app/backend dev\" \"pnpm --filter @app/frontend dev\"",
+    "dev:backend": "pnpm --filter @app/backend dev",
+    "dev:frontend": "pnpm --filter @app/frontend dev",
+    "build": "pnpm --recursive run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
