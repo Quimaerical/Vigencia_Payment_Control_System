@@ -7,3 +7,5 @@ build/
 *.log
 docs/internal/
 internal/
+docs/*.pdf
+docs/**/*.pdf
