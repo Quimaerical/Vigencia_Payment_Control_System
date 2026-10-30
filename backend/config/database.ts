@@ -2,26 +2,35 @@ import app from '@adonisjs/core/services/app'
 import env from '#start/env'
 import { defineConfig } from '@adonisjs/lucid'
 
+const hasPostgres = Boolean(env.get('DATABASE_URL') || env.get('DB_HOST'))
+
 const dbConfig = defineConfig({
   /**
    * Default connection used for all queries.
    */
-  connection: env.get('DB_HOST') ? 'pg' : 'sqlite',
+  connection: env.get('DB_CONNECTION') || (hasPostgres ? 'pg' : 'sqlite'),
 
   connections: {
     /**
-     * PostgreSQL connection.
+     * PostgreSQL connection (supports DATABASE_URL from Railway/Neon or discrete DB_* params).
      */
     pg: {
       client: 'pg',
-      connection: {
-        host: env.get('DB_HOST'),
-        port: env.get('DB_PORT', 5432),
-        user: env.get('DB_USER'),
-        password: env.get('DB_PASSWORD'),
-        database: env.get('DB_DATABASE'),
-        ssl: env.get('DB_SSL') ? { rejectUnauthorized: false } : false,
-      },
+      connection: env.get('DATABASE_URL')
+        ? {
+            connectionString: env.get('DATABASE_URL'),
+            ssl: env.get('DB_SSL') || env.get('DATABASE_URL')?.includes('neon.tech')
+              ? { rejectUnauthorized: false }
+              : false,
+          }
+        : {
+            host: env.get('DB_HOST'),
+            port: env.get('DB_PORT', 5432),
+            user: env.get('DB_USER'),
+            password: env.get('DB_PASSWORD'),
+            database: env.get('DB_DATABASE'),
+            ssl: env.get('DB_SSL') ? { rejectUnauthorized: false } : false,
+          },
       migrations: {
         naturalSort: true,
         paths: ['database/migrations'],
