@@ -1,0 +1,21 @@
+# ==============================================================================
+# Cloudflare Tunnel Configuration Template (cloudflared)
+# Proyecto: Vigencia Payment Control System
+# ==============================================================================
+# Reemplaza <TUNNEL_ID> con el UUID devuelto por `cloudflared tunnel create <nombre>`
+# Reemplaza /home/usuario/.cloudflared/<TUNNEL_ID>.json con la ruta absoluta a tu credencial
+
+tunnel: <TUNNEL_UUID>
+credentials-file: /home/sebastian/.cloudflared/<TUNNEL_UUID>.json
+
+# Reglas de Ingress (de arriba hacia abajo)
+ingress:
+  # 1. Subdominio asignado para la API de AdonisJS local
+  - hostname: api.tudominio.com
+    service: http://localhost:3333
+    originRequest:
+      noTLSVerify: false
+      connectTimeout: 30s
+
+  # 2. Regla Catch-All obligatoria por Cloudflare para tráfico no reconocido
+  - service: http_status:404

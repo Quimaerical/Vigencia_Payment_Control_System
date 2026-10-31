@@ -7,47 +7,18 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-vigencia_db}
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    container_name: vigencia-backend
-    restart: unless-stopped
-    depends_on:
-      - postgres
-    environment:
-      NODE_ENV: development
-      PORT: 3333
-      HOST: 0.0.0.0
-      LOG_LEVEL: info
-      APP_KEY: ${APP_KEY:-ahuZ2_ODVkcPVMVVOEYviIhxC4UXjXrV}
-      APP_URL: http://localhost:3333
-      SESSION_DRIVER: cookie
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-vigencia_db}
-      DB_SSL: "false"
-      CORS_ORIGIN: http://localhost:3000,http://localhost:5173
-    ports:
-      - "3333:3333"
-
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    container_name: vigencia-frontend
-    restart: unless-stopped
-    depends_on:
-      - backend
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      HOST: 0.0.0.0
-    ports:
-      - "3000:3000"
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vigencia_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
-  pgdata:
+  postgres_data:
+    name: vigencia_postgres_data

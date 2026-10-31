@@ -34,4 +34,8 @@ export default await Env.create(new URL('../', import.meta.url), {
   DB_PASSWORD: Env.schema.string.optional(),
   DB_DATABASE: Env.schema.string.optional(),
   DB_SSL: Env.schema.boolean.optional(),
+
+  // CORS & Networking
+  CORS_ALLOWED_ORIGINS: Env.schema.string.optional(),
+  TUNNEL_HOSTNAME: Env.schema.string.optional(),
 })

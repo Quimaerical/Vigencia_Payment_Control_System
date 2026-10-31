@@ -5,12 +5,13 @@
 ### *Sistema Integral y Auditable de Control de Pagos, Causaciones y Asignaciones Multidisciplinarias*
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![AdonisJS v6](https://img.shields.io/badge/AdonisJS_v6-5A45FF?style=for-the-badge&logo=adonisjs&logoColor=white)](https://adonisjs.com/)
 [![Svelte 5](https://img.shields.io/badge/Svelte_5-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)](https://svelte.dev/)
+[![AdonisJS v6](https://img.shields.io/badge/AdonisJS_v6-5A45FF?style=for-the-badge&logo=adonisjs&logoColor=white)](https://adonisjs.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![PostgreSQL (Neon)](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://neon.tech/)
-[![pnpm Workspaces](https://img.shields.io/badge/pnpm_Workspaces-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Cloudflare Tunnels](https://img.shields.io/badge/Cloudflare_Tunnels-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
+[![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
 <p align="center">
   <b>Universidad de Carabobo</b> • Facultad de Ciencias y Tecnología (FACYT) • Escuela de Computación<br>
@@ -23,9 +24,9 @@
 
 ## Visión General del Proyecto
 
-**Vigencia Payment Control System** es una plataforma cliente-servidor de alta fidelidad, robustez financiera y auditoría continua, diseñada para sustituir los esquemas de gestión manuales en hojas de cálculo por un entorno auditable, inmutable y automatizado. 
+**Vigencia Payment Control System** es una plataforma cliente-servidor de alta fidelidad, precisión matemática y auditoría continua, diseñada para sustituir los esquemas de gestión manuales en hojas de cálculo por un entorno inmutable y automatizado.
 
-El sistema administra asignaciones económicas en **dólares estadounidenses (USD)** para equipos de investigación multidisciplinarios (física, química, biología y afines). Responde con exactitud matemática y en tiempo real a las preguntas operativas esenciales:
+El sistema administra asignaciones económicas en **dólares estadounidenses (USD)** para equipos de investigación multidisciplinarios (física, química, biología y afines). Responde en tiempo real a las preguntas operativas esenciales:
 - **¿Cuánto se ha causado?**
 - **¿Cuánto se ha pagado?**
 - **¿Cuándo y a quién?**
@@ -33,130 +34,216 @@ El sistema administra asignaciones económicas en **dólares estadounidenses (US
 - **¿Cuál es el saldo deudor consolidado e individual por beneficiario?**
 
 > [!IMPORTANT]
-> **Modelo Operativo:** No se trata de nómina parafiscal laboral formal con deducciones de ley. Los **beneficiarios (personal que cobra) NO poseen credenciales de acceso ni interactúan con el sistema**; sus registros son operados y controlados exclusivamente por los roles asignados.
+> **Modelo Operativo:** No se trata de nómina parafiscal formal laboral. Los **beneficiarios (personal que cobra) NO poseen credenciales de acceso ni interactúan con el sistema**; sus registros son operados y controlados exclusivamente por los roles asignados (`Administrador`, `Generador`, `Receptor`).
 
 ---
 
-## Capacidades y Objetivos Futuros del Sistema
+## Arquitectura de Despliegue Híbrida
 
-El sistema implementará de forma progresiva un conjunto de motores financieros, de control y de reportería orientados al cumplimiento de las especificaciones funcionales:
+El monorepo está organizado bajo una topología híbrida desacoplada para optimizar latencia, costos y soberanía de datos:
 
-```mermaid
-flowchart LR
-    A["Catalogación Maestra<br/>(Personas, Proyectos, Grupos)"] --> B["Motor de Causación<br/>(Prorrateo Diario Activo)"]
-    B --> C["Solicitudes de Pago<br/>(Agrupación y Aprobación)"]
-    C --> D["Amortización FIFO<br/>(Distribución en Deuda Antigua)"]
-    D --> E["Cajas Chicas y Vales<br/>(Desembolsos y Rendiciones)"]
-    E --> F["Auditoría Forense<br/>(JSONB Diff e Inmutabilidad)"]
+```
+[ Navegador del Usuario / Cliente ]
+               │
+               ▼
+   [ Vercel Global Edge Network ]
+      Frontend Svelte 5 / SvelteKit
+      (Despliegue Serverless / SSR)
+               │
+               │ HTTPS (Peticiones AJAX / REST API)
+               │ URL: https://api.tudominio.com
+               ▼
+     [ Cloudflare Edge Network ]
+         DNS Seguro + SSL + WAF
+               │
+               │ Túnel Encriptado (cloudflared)
+               ▼
+   [ Servidor Local de Desarrollo / On-Premise ]
+      ┌────────────────────────────────────────┐
+      │  cloudflared daemon                    │
+      │  (Escucha en el túnel y rutea tráfico) │
+      │               │                        │
+      │               ▼ HTTP (localhost:3333)  │
+      │  AdonisJS v6 API RESTful               │
+      │  (Proceso Node.js persistente)         │
+      │               │                        │
+      │               ▼ TCP (localhost:5432)   │
+      │  PostgreSQL 16 Alpine (Docker Compose) │
+      │  Volumen Persistente: postgres_data    │
+      └────────────────────────────────────────┘
 ```
 
-### 1. Motor de Asignaciones y Causación Dinámica
-- **Periodicidades Adaptables:** Soporte parametrizable para ciclos de pago semanales, quincenales y mensuales con fechas de corte dinámicas.
-- **Prorrateo Exacto de Días Activos:** Cálculo de causaciones considerando fechas efectivas de inicio y fin del personal en cada periodo (`dias_activos / dias_totales_periodo * monto_base`).
-- **Generación por Lotes:** Procesamiento masivo de causaciones con transacciones ACID para garantizar consistencia total sin registros huérfanos.
-
-### 2. Solicitudes de Pago y Algoritmo FIFO (First-In, First-Out)
-- **Agrupación y Estados de Solicitud:** Flujo de estados estricto: `CREACION` -> `ENVIO` -> `APROBACION` -> `ENTREGA` -> `CIERRE`.
-- **Amortización Estricta FIFO:** Los pagos parciales o consolidados se imputan de forma obligatoria contra la deuda pendiente más antigua del beneficiario en el proyecto.
-- **Inmutabilidad Financiera:** Todos los movimientos aprobados son inmutables. Las rectificaciones se gestionan exclusivamente mediante anulaciones formalmente justificadas con trazabilidad.
-
-### 3. Gestión Integral de Cajas Chicas y Vales de Emergencia
-- **Apertura y Cierre Mensual:** Control de fondos asignados por proyecto para gastos operativos o anticipos menores.
-- **Vales de Caja:** Emisión de desembolsos rápidos, autorización gerencial y rendición documentada con comprobantes digitales.
-- **Arrastre de Saldos:** Conciliación mensual y pase de balances hacia el siguiente periodo contable.
-
-### 4. Segregación Estricta de Funciones (RBAC) y Seguridad
-- **Políticas RBAC:** Implementación con `@adonisjs/bouncer` que restringe al rol `Administrador` de realizar desembolsos monetarios, reservando la aprobación de fondos al rol `Receptor`, y la generación técnica al rol `Generador`.
-- **Autenticación Opaque Access Tokens:** Tokens de acceso de alta entropía con hashing en base de datos (@adonisjs/auth) y revocación inmediata.
-- **Trazabilidad Forense (`audit_log`):** Registro automático de cambios de estado, anulaciones y transacciones en tablas estructuradas con deltas `JSONB` (datos previos vs. datos nuevos).
-
-### 5. Generación Automatizada de Documentos y Reportes
-- **Recibos Individuales de Pago:** Generación de comprobantes en PDF con desglose de periodos, días causados, monto abonado y saldo remanente.
-- **Solicitudes de Pago Consolidadas:** Documentos ejecutivos listos para firma y archivo físico/digital.
-- **Tableros Analíticos:** Métricas en vivo de deuda acumulada, fondos erogados y proyecciones de gasto por proyecto de investigación.
-
 ---
 
-## Stack Tecnológico Unificado (TypeScript End-to-End)
+## Prerrequisitos del Entorno
 
-| Capa | Tecnología / Herramienta | Propósito / Función |
+Asegúrate de contar con las siguientes herramientas instaladas localmente:
+
+| Herramienta | Versión Requerida | Comando de Verificación |
 | :--- | :--- | :--- |
-| **Backend** | ![AdonisJS](https://img.shields.io/badge/AdonisJS_v6-5A45FF?style=flat-square&logo=adonisjs&logoColor=white) | API RESTful modular, tipado estricto, IoC Container y Service Providers |
-| **Frontend** | ![Svelte](https://img.shields.io/badge/Svelte_5-FF3E00?style=flat-square&logo=svelte&logoColor=white) | Reactividad granular con Runes (`$state`, `$derived`, `$props`), snippets y SSR/SPA |
-| **Estilos & UI** | ![Tailwind](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white) | Sistema de diseño Glassmorphism corporativo (Dark/Light mode) con `@tailwindcss/vite` |
-| **Persistencia** | ![PostgreSQL](https://img.shields.io/badge/Neon_PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white) | Base de datos relacional serverless en Neon DB con triggers y constraints de integridad |
-| **ORM** | ![Lucid](https://img.shields.io/badge/Lucid_ORM-5A45FF?style=flat-square&logo=adonisjs&logoColor=white) | Modelado relacional, transacciones ACID continuas y migraciones versionadas |
-| **Validación** | ![VineJS](https://img.shields.io/badge/VineJS-8B5CF6?style=flat-square&logo=white) | Validación de esquemas y DTOs en tiempo de ejecución con inferencia estática |
-| **Seguridad & RBAC** | ![Adonis Bouncer](https://img.shields.io/badge/Adonis_Bouncer-FF2D20?style=flat-square&logo=white) | Policies y Gates para control de acceso y separación de deberes |
-| **Monorepo** | ![pnpm](https://img.shields.io/badge/pnpm_Workspaces-F69220?style=flat-square&logo=pnpm&logoColor=white) | Gestión unificada de dependencias para `@app/backend`, `@app/frontend` y `@app/shared` |
-| **Contenedores** | ![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=flat-square&logo=docker&logoColor=white) | Orquestación uniforme de servicios y homologación de entornos |
+| **Node.js** | 20 LTS o superior | `node -v` |
+| **pnpm** | 10.x / 12.x (vía Corepack) | `pnpm -v` |
+| **Docker & Docker Compose** | Engine 24+ / Compose v2 | `docker compose version` |
+| **Cloudflare CLI** | cloudflared versión estable | `cloudflared --version` |
 
 ---
 
-## Sistema de Diseño: Glassmorphism Corporativo
-
-La interfaz de usuario implementa un sistema visual moderno diseñado para jornadas operativas extensas:
-
-- **Superficies Translúcidas:** Tarjetas y modales con `backdrop-filter: blur(12px)`, esquinas pronunciadas (`rounded-2xl`) y bordes luminosos hiperfinos (`border-white/10` o `border-black/5`).
-- **Modo Claro (Light Mode):** Lienzo base en crema cálido editorial (`#FDFBF7` / `#FAF7EE`) con tarjetas en vidrio blanco translúcido (`rgba(255, 255, 255, 0.75)`), minimizando la fatiga visual.
-- **Modo Oscuro (Dark Mode):** Fondo en gris plomo profundo (`#0F172A` / `#181E29`) con paneles en vidrio ahumado (`rgba(30, 41, 59, 0.65)`) y acentos en verde esmeralda luminiscente y ámbar dorado.
-
----
-
-## Arquitectura del Monorepo
+## Estructura del Monorepo
 
 ```plaintext
 Vigencia_Payment_Control_System/
-├── backend/                  # API RESTful con AdonisJS v6
-│   ├── app/                  # Controladores, Modelos, Validadores y Políticas RBAC
-│   ├── config/               # Configuraciones (DB, Auth, Cors, Bouncer)
-│   ├── database/             # Migraciones DDL, Seeders y Schemas
-│   ├── start/                # Kernel HTTP, Rutas y Validación de Variables (.env)
-│   └── package.json          # @app/backend
-├── frontend/                 # Aplicación Web con Svelte 5 + Vite
-│   ├── src/                  # Rutas SvelteKit, Runes y Componentes UI
-│   ├── static/               # Assets estáticos y recursos públicos
-│   └── package.json          # @app/frontend
+├── frontend/                       # Aplicación SvelteKit con @sveltejs/adapter-vercel
+│   ├── src/                        # Runes, componentes y páginas de la interfaz
+│   ├── .env.example                # Variables públicas (PUBLIC_API_URL)
+│   ├── vite.config.ts              # Configuración Vite con adapter-vercel
+│   └── package.json                # @app/frontend
+├── backend/                        # API RESTful en AdonisJS v6
+│   ├── app/                        # Controladores, modelos, bouncer policies
+│   ├── config/                     # CORS dinámico, base de datos y seguridad
+│   ├── database/                   # Migraciones DDL y seeders
+│   ├── .env.example                # Plantilla de variables para PostgreSQL local
+│   └── package.json                # @app/backend
 ├── packages/
-│   └── shared/               # Contratos y tipos compartidos
-│       ├── src/index.ts      # Enums de Dominio (RolUsuario, EstadoSolicitud)
-│       └── package.json      # @app/shared
-├── docs/                     # Documentación técnica preliminar y arquitectura
-├── pnpm-workspace.yaml       # Definición de paquetes del workspace
-├── package.json              # Orquestador raíz de scripts con concurrently
-└── README.md                 # Documentación principal del repositorio
+│   └── shared/                     # Tipos y contratos compartidos TypeScript (@app/shared)
+├── deploy/
+│   └── cloudflared/                # Plantillas y scripts para Cloudflare Tunnel
+│       ├── config.yml.example      # Archivo de configuración ingress
+│       ├── run-tunnel.sh           # Script auxiliar ejecutable para levantar el túnel
+│       └── cloudflared-vigencia.service.example # Servicio systemd
+├── docker-compose.yml              # Orquestación de PostgreSQL 16 con named volume
+├── pnpm-workspace.yaml             # Configuración de workspaces del monorepo
+├── vercel.json                     # Configuración de build de Vercel
+└── README.md                       # Documentación operativa
 ```
 
 ---
 
-## Equipo de Desarrollo y Matriz RACI
+## Guía de Inicialización Local Paso a Paso
 
-| Integrante | Rol Principal | Áreas de Enfoque |
-| :--- | :--- | :--- |
-| **Sebastián Piñango** | *Project Manager & Lead Frontend* | Arquitectura de software, DevOps/CI-CD, UI/UX en Svelte 5 con Glassmorphism |
-| **Edgar Gutiérrez** | *Lead Backend & DBA* | Arquitectura base AdonisJS v6, diseño relacional PostgreSQL, triggers y Lucid ORM |
-| **Anthony Quero** | *Fullstack & Lead QA* | Desarrollo transversal de características, diseño de suites de pruebas y criterios de aceptación |
-| **Juan Sanabria** | *Backend & AppSec Specialist* | Arquitectura de seguridad, autenticación por tokens, RBAC con Bouncer y auditoría forense |
-| **Ulises Rondón** | *Backend & API Integration* | Endpoints RESTful, contratos DTO con VineJS, middlewares y serialización de respuestas |
+Sigue esta secuencia para iniciar el entorno en tu máquina:
 
----
-
-## Comandos de Desarrollo
+### 1. Levantar la Base de Datos con Docker Compose
+Inicia el contenedor de PostgreSQL en segundo plano con persistencia y verificación de salud:
 
 ```bash
-# 1. Instalar todas las dependencias del monorepo
-pnpm install
-
-# 2. Levantar backend (3333) y frontend (5173) en paralelo
-pnpm run dev
-
-# 3. Comandos individuales por entorno
-pnpm run dev:backend      # Solo backend (AdonisJS con Hot Reload)
-pnpm run dev:frontend     # Solo frontend (Vite Dev Server)
-
-# 4. Compilación recursiva de producción
-pnpm run build
+docker compose up -d postgres
 ```
+
+Para verificar que el contenedor esté sano (`healthy`):
+```bash
+docker compose ps
+```
+
+### 2. Configurar el Backend y Ejecutar Migraciones
+Crea tu archivo `.env` en la carpeta `backend/` a partir de la plantilla:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Genera la clave de aplicación y ejecuta las migraciones pendientes:
+```bash
+cd backend
+node ace generate:key
+node ace migration:run
+cd ..
+```
+
+Inicia el servidor backend en modo desarrollo:
+```bash
+pnpm --filter @app/backend dev
+```
+*El backend escuchará en `http://localhost:3333`.*
+
+### 3. Configurar y Activar el Túnel de Cloudflare (cloudflared)
+Para exponer tu API local de forma segura hacia Vercel:
+
+1. **Autenticar con Cloudflare (solo primera vez):**
+   ```bash
+   cloudflared tunnel login
+   ```
+2. **Crear el túnel:**
+   ```bash
+   cloudflared tunnel create vigencia-api
+   ```
+   *Guarda el UUID emitido por la terminal y la ruta del archivo de credenciales JSON.*
+
+3. **Asignar el subdominio DNS:**
+   ```bash
+   cloudflared tunnel route dns vigencia-api api.tudominio.com
+   ```
+
+4. **Configurar el archivo ingress:**
+   Copia la plantilla y reemplaza el UUID y la ruta de credenciales:
+   ```bash
+   cp deploy/cloudflared/config.yml.example deploy/cloudflared/config.yml
+   ```
+
+5. **Arrancar el túnel:**
+   Puedes usar el script auxiliar provisto:
+   ```bash
+   ./deploy/cloudflared/run-tunnel.sh vigencia-api
+   ```
+   *(O de forma directa: `cloudflared tunnel --config deploy/cloudflared/config.yml run vigencia-api`)*
+
+---
+
+## Guía de Despliegue del Frontend en Vercel
+
+1. **Importar el Repositorio:**
+   - Ingresa a tu panel en [Vercel](https://vercel.com/dashboard).
+   - Haz clic en **Add New Project** y selecciona `Vigencia_Payment_Control_System`.
+
+2. **Configuración del Proyecto en Vercel:**
+   - **Framework Preset:** `SvelteKit`.
+   - **Root Directory:** Haz clic en *Edit* y selecciona `frontend`.
+   - **Build Command:** Déjalo por defecto (`vite build`) o utiliza la directiva de monorepo gestionada por `vercel.json`.
+
+3. **Variables de Entorno en Vercel Dashboard:**
+   En la sección **Environment Variables**, define:
+   - `PUBLIC_API_URL`: La URL pública expuesta por tu túnel de Cloudflare, por ejemplo:
+     ```
+     https://api.tudominio.com
+     ```
+
+4. **Desplegar:**
+   Haz clic en **Deploy**. Vercel compilará la aplicación utilizando `@sveltejs/adapter-vercel`.
+
+---
+
+## Troubleshooting y Resolución de Problemas
+
+### 1. Errores de CORS en el Navegador
+- **Síntoma:** `Access to fetch at 'https://api.tudominio.com' from origin 'https://tu-proyecto.vercel.app' has been blocked by CORS policy`.
+- **Solución:** En `backend/.env`, agrega tu dominio de Vercel en `CORS_ALLOWED_ORIGINS`:
+  ```env
+  CORS_ALLOWED_ORIGINS=https://tu-proyecto.vercel.app
+  ```
+  *(El validador de `backend/config/cors.ts` permite dinámicamente cualquier subdominio `.vercel.app`, pero si utilizas un dominio personalizado en Vercel debes incluirlo explícitamente).*
+
+### 2. El Túnel de Cloudflare no Responde o Devuelve Error 502 Bad Gateway
+- **Causa:** El daemon `cloudflared` está activo pero no puede comunicarse con `http://localhost:3333`.
+- **Verificación:**
+  1. Comprueba que el backend esté arriba:
+     ```bash
+     curl -I http://localhost:3333
+     ```
+  2. Verifica que el puerto en `deploy/cloudflared/config.yml` coincida con la variable `PORT` configurada en `backend/.env`.
+
+### 3. PostgreSQL en Docker No Responde
+- **Verificación de logs:**
+  ```bash
+  docker compose logs -f postgres
+  ```
+- **Comprobación manual de conexión local:**
+  ```bash
+  docker compose exec postgres pg_isready -U postgres -d vigencia_db
+  ```
+- **Reset de volumen (solo si se requiere reiniciar la BD en desarrollo):**
+  ```bash
+  docker compose down -v
+  docker compose up -d postgres
+  ```
 
 ---
 
