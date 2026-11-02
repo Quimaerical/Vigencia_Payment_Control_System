@@ -32,19 +32,76 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
-export class UserSchema extends BaseModel {
-  static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'updatedAt'] as const
-  $columns = UserSchema.$columns
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
+export class GruposPagoSchema extends BaseModel {
+  static $columns = ['actualizadoEn', 'creadoEn', 'descripcion', 'estaActivo', 'id', 'nombre'] as const
+  $columns = GruposPagoSchema.$columns
+  @column.dateTime()
+  declare actualizadoEn: DateTime | null
+  @column.dateTime()
+  declare creadoEn: DateTime | null
   @column()
-  declare email: string
+  declare descripcion: string | null
   @column()
-  declare fullName: string | null
+  declare estaActivo: boolean | null
   @column({ isPrimary: true })
   declare id: number
-  @column({ serializeAs: null })
-  declare password: string
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime | null
+  @column()
+  declare nombre: string
+}
+
+export class PersonaSchema extends BaseModel {
+  static $columns = ['actualizadoEn', 'apellidos', 'correo', 'creadoEn', 'estaActivo', 'id', 'identificacion', 'nombres'] as const
+  $columns = PersonaSchema.$columns
+  @column.dateTime()
+  declare actualizadoEn: DateTime | null
+  @column()
+  declare apellidos: string
+  @column()
+  declare correo: string | null
+  @column.dateTime()
+  declare creadoEn: DateTime | null
+  @column()
+  declare estaActivo: boolean | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare identificacion: string
+  @column()
+  declare nombres: string
+}
+
+export class ProyectoSchema extends BaseModel {
+  static $columns = ['actualizadoEn', 'codigo', 'creadoEn', 'descripcion', 'estaActivo', 'id', 'nombre'] as const
+  $columns = ProyectoSchema.$columns
+  @column.dateTime()
+  declare actualizadoEn: DateTime | null
+  @column()
+  declare codigo: string
+  @column.dateTime()
+  declare creadoEn: DateTime | null
+  @column()
+  declare descripcion: string | null
+  @column()
+  declare estaActivo: boolean | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare nombre: string
+}
+
+export class UsuarioSchema extends BaseModel {
+  static $columns = ['creadoEn', 'estaActivo', 'id', 'passwordHash', 'rol', 'username'] as const
+  $columns = UsuarioSchema.$columns
+  @column.dateTime()
+  declare creadoEn: DateTime | null
+  @column()
+  declare estaActivo: boolean | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare passwordHash: string
+  @column()
+  declare rol: any
+  @column()
+  declare username: string
 }
