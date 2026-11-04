@@ -7,6 +7,29 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
+export class AuditLogSchema extends BaseModel {
+  static $columns = ['accion', 'creadoEn', 'datosAnteriores', 'datosNuevos', 'direccionIp', 'id', 'registroId', 'tablaAfectada', 'usuarioId'] as const
+  $columns = AuditLogSchema.$columns
+  @column()
+  declare accion: string
+  @column.dateTime()
+  declare creadoEn: DateTime | null
+  @column()
+  declare datosAnteriores: any | null
+  @column()
+  declare datosNuevos: any | null
+  @column()
+  declare direccionIp: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare registroId: number
+  @column()
+  declare tablaAfectada: string
+  @column()
+  declare usuarioId: number | null
+}
+
 export class AuthAccessTokenSchema extends BaseModel {
   static $columns = ['abilities', 'createdAt', 'expiresAt', 'hash', 'id', 'lastUsedAt', 'name', 'tokenableId', 'type', 'updatedAt'] as const
   $columns = AuthAccessTokenSchema.$columns
@@ -32,6 +55,31 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class DeudaSchema extends BaseModel {
+  static $columns = ['actualizadoEn', 'creadoEn', 'estado', 'fechaVencimiento', 'grupoPagoId', 'id', 'montoOriginal', 'personaId', 'proyectoId', 'saldoPendiente'] as const
+  $columns = DeudaSchema.$columns
+  @column.dateTime()
+  declare actualizadoEn: DateTime | null
+  @column.dateTime()
+  declare creadoEn: DateTime | null
+  @column()
+  declare estado: string | null
+  @column.date()
+  declare fechaVencimiento: DateTime
+  @column()
+  declare grupoPagoId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare montoOriginal: string
+  @column()
+  declare personaId: number | null
+  @column()
+  declare proyectoId: number | null
+  @column()
+  declare saldoPendiente: string
+}
+
 export class GruposPagoSchema extends BaseModel {
   static $columns = ['actualizadoEn', 'creadoEn', 'descripcion', 'estaActivo', 'id', 'nombre'] as const
   $columns = GruposPagoSchema.$columns
@@ -47,6 +95,31 @@ export class GruposPagoSchema extends BaseModel {
   declare id: number
   @column()
   declare nombre: string
+}
+
+export class PagoSchema extends BaseModel {
+  static $columns = ['actualizadoEn', 'creadoEn', 'estado', 'fechaPago', 'id', 'metodoPago', 'montoTotal', 'numeroReferencia', 'personaId', 'usuarioId'] as const
+  $columns = PagoSchema.$columns
+  @column.dateTime()
+  declare actualizadoEn: DateTime | null
+  @column.dateTime()
+  declare creadoEn: DateTime | null
+  @column()
+  declare estado: string | null
+  @column.date()
+  declare fechaPago: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare metodoPago: string
+  @column()
+  declare montoTotal: string
+  @column()
+  declare numeroReferencia: string | null
+  @column()
+  declare personaId: number | null
+  @column()
+  declare usuarioId: number | null
 }
 
 export class PersonaSchema extends BaseModel {
@@ -68,6 +141,23 @@ export class PersonaSchema extends BaseModel {
   declare identificacion: string
   @column()
   declare nombres: string
+}
+
+export class ProrrateoSchema extends BaseModel {
+  static $columns = ['actualizadoEn', 'creadoEn', 'deudaId', 'id', 'montoAplicado', 'pagoId'] as const
+  $columns = ProrrateoSchema.$columns
+  @column.dateTime()
+  declare actualizadoEn: DateTime | null
+  @column.dateTime()
+  declare creadoEn: DateTime | null
+  @column()
+  declare deudaId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare montoAplicado: string
+  @column()
+  declare pagoId: number | null
 }
 
 export class ProyectoSchema extends BaseModel {
