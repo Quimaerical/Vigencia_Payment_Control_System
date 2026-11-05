@@ -11,6 +11,8 @@ import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 
+const PagosController = () => import('#controllers/pagos_controller')
+
 router.get('/', () => {
   return { hello: 'world' }
 })
@@ -35,3 +37,8 @@ router
       .use(middleware.auth())
   })
   .prefix('/api/v1')
+
+// Agrupamos las rutas bajo el prefijo /api
+router.group(() => {
+  router.post('/pagos', [PagosController, 'procesarPago'])
+}).prefix('/api')

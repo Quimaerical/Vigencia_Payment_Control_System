@@ -30,6 +30,12 @@ const routes = {
     tokens: [[0,"api"],[0,"v1"],[0,"account"],[0,"logout"]],
     types: placeholder as Registry['profile.access_tokens.destroy']['types'],
   },
+  'pagos.procesar_pago': {
+    methods: ["POST"],
+    pattern: '/api/pagos',
+    tokens: [[0,"api"],[0,"pagos"]],
+    types: placeholder as Registry['pagos.procesar_pago']['types'],
+  },
 } as const satisfies Record<string, AdonisEndpoint>
 
 export { routes }
