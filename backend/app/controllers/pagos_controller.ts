@@ -1,23 +1,19 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import Pago from '#models/pago'
 import Deuda from '#models/deuda'
 import Prorrateo from '#models/prorrateo'
 import AuditLog from '#models/audit_log'
+import { procesarPagoValidator } from '#validators/pago'
 
 export default class PagosController {
   public async procesarPago({ request, response, auth }: HttpContext) {
-    const { personaId, montoTotal, metodoPago, numeroReferencia, fechaPago, proyectoId } = request.only([
-      'personaId',
-      'montoTotal',
-      'metodoPago',
-      'numeroReferencia',
-      'fechaPago',
-      'proyectoId',
-    ])
+    const payload = await request.validateUsing(procesarPagoValidator)
+    const { personaId, montoTotal, metodoPago, numeroReferencia, fechaPago, proyectoId } = payload
 
     // Determinar el usuario que procesa la operación (autenticado o suministrado)
-    const usuarioId = auth?.user?.id ?? request.input('usuarioId') ?? 1
+    const usuarioId = auth?.user?.id ?? payload.usuarioId ?? 1
 
     // 1. Iniciar Transacción de Base de Datos (Seguridad Financiera y Concurrencia ACID)
     const trx = await db.transaction()
@@ -29,8 +25,8 @@ export default class PagosController {
       pago.usuarioId = Number(usuarioId)
       pago.montoTotal = Number(montoTotal)
       pago.metodoPago = metodoPago
-      pago.numeroReferencia = numeroReferencia
-      pago.fechaPago = fechaPago
+      pago.numeroReferencia = numeroReferencia ?? null
+      pago.fechaPago = DateTime.fromISO(fechaPago)
       pago.useTransaction(trx)
       await pago.save()
 
