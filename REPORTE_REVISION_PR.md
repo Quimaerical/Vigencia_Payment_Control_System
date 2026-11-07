@@ -53,6 +53,10 @@ Todas las observaciones críticas, mayores y de buenas prácticas señaladas en 
 - [x] **`pagos_controller.ts`:** Manejo semántico de respuestas HTTP (422 para errores de saldo, deudas o validación; 403 para denegación de rol) sin exponer trazas internas no controladas en 500.
 - [x] **`app/models/usuario.ts`:** Se tipó estrictamente `rol: RolUsuario` consumiendo el enum canónico de `@app/shared`.
 - [x] **`main_seeder.ts`:** Uso de `firstOrCreate` en `Persona`, `Proyecto`, `GrupoPago` y verificación previa en `Deuda` para ejecución 100% idempotente, con contraseña predeterminada segura configurable vía variable de entorno.
+- [x] **Homogeneización total en español y eliminación de residuos en inglés:**
+  - Se eliminaron los archivos residuales `models/user.ts`, `transformers/user_transformer.ts`, `validators/user.ts` y controladores en inglés.
+  - Se crearon los controladores canónicos `sesiones_controller.ts` y `usuarios_controller.ts`.
+  - Se documentaron formalmente con JSDoc los métodos de `PagosController` (justificación FIFO, `FOR UPDATE` y sobrepago) y el modelo `Usuario` (nota explícita de no-acceso a beneficiarios).
 
 ---
 
