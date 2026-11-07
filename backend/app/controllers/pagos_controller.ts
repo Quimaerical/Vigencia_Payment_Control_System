@@ -8,6 +8,31 @@ import { procesarPagoValidator } from '#validators/pago'
 import { registrarPago } from '#abilities/main'
 
 export default class PagosController {
+  /**
+   * Procesa la amortización y registro de pagos mediante el algoritmo FIFO (First In, First Out).
+   *
+   * Principios técnicos y contables implementados:
+   * 1. Ordenación FIFO por `fecha_vencimiento ASC`:
+   *    Garantiza que el desembolso amortice prioritariamente la causación/deuda devengada
+   *    más antigua de la persona en el proyecto específico, respetando la directriz contable.
+   *
+   * 2. Bloqueo pesimista a nivel de fila (`SELECT ... FOR UPDATE`):
+   *    Bloquea las tuplas de deuda seleccionadas dentro de la transacción ACID PostgreSQL activa.
+   *    Esto previene condiciones de carrera financieras y dobles amortizaciones si múltiples
+   *    peticiones concurrentes intentan imputar pagos al mismo beneficiario simultáneamente.
+   *
+   * 3. Tratamiento Contable de Sobrepagos y Excedentes:
+   *    El sistema valida previamente la deuda consolidada del proyecto (`totalDeudaPendiente`).
+   *    Si `montoTotal > totalDeudaPendiente` o si no existen deudas pendientes, la operación es
+   *    rechazada inmediatamente con HTTP 422 (`SOBREPAGO_NO_PERMITIDO` / `SIN_DEUDAS_PENDIENTES`).
+   *    Esto garantiza la inmutabilidad financiera impidiendo el registro de fondos huérfanos sin
+   *    respaldo contable en la tabla de prorrateos.
+   *
+   * 4. Auditoría Forense Integral:
+   *    Genera trazas inmutables en `audit_logs` (formato JSONB) para el pago, las deudas amortizadas
+   *    (con snapshot de saldo/estado anterior y nuevo) y cada prorrateo creado, asociando la IP real
+   *    y el ID del usuario receptor que autorizó el pago.
+   */
   public async procesarPago({ request, response, auth, bouncer }: HttpContext) {
     // 1. Autenticación y Autorización RBAC estricta (Solo rol 'receptor')
     const usuario = auth.getUserOrFail()

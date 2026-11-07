@@ -9,6 +9,19 @@ import type { RolUsuario } from '@app/shared'
 import Pago from './pago.js'
 import AuditLog from './audit_log.js'
 
+/**
+ * Configuración del mixin de autenticación oficial de AdonisJS (AuthFinder):
+ * - uids: ['username'] define el identificador único para el inicio de sesión.
+ * - passwordColumnName: 'passwordHash' mapea la columna de almacenamiento seguro con hash Argon2/Bcrypt.
+ *
+ * NOTA DE NEGOCIO FUNDAMENTAL:
+ * Los beneficiarios / personas que reciben asignaciones NO poseen usuarios en el sistema.
+ * La entidad 'Usuario' está restringida exclusivamente a operadores autorizados del sistema
+ * bajo segregación de funciones en tres roles canónicos:
+ * 1. Administrador (gestión de parámetros y catálogos, sin operaciones monetarias).
+ * 2. Generador de Nómina (administración de beneficiarios, causaciones y solicitudes).
+ * 3. Receptor de Nómina (aprobación, desembolso físico/electrónico e imputación FIFO).
+ */
 const AuthFinder = withAuthFinder(hash, {
   uids: ['username'],
   passwordColumnName: 'passwordHash',
