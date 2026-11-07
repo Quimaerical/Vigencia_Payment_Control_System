@@ -81,9 +81,10 @@ export default class PagosController {
     } catch (error) {
       // 7. Rollback: Revertir todo si hay error
       await trx.rollback()
+      const mensajeError = error instanceof Error ? error.message : 'Error desconocido al procesar el pago'
       return response.status(500).json({
         mensaje: 'Error procesando el pago. Transacción revertida.',
-        error: error.message
+        error: mensajeError
       })
     }
   }
