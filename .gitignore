@@ -10,3 +10,6 @@ internal/
 docs/*.pdf
 docs/**/*.pdf
 .opencode/
+PDF/
+REPORTE_REVISION_PR.md
+GUIA_PROYECTO.md
