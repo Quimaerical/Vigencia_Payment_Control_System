@@ -9,7 +9,7 @@ export default class extends BaseSchema {
       table.string('codigo', 50).unique().notNullable()
       table.string('nombre', 150).notNullable()
       table.text('descripcion').nullable()
-      
+
       table.boolean('esta_activo').defaultTo(true)
       table.timestamp('creado_en', { useTz: true }).defaultTo(this.now())
       table.timestamp('actualizado_en', { useTz: true }).defaultTo(this.now())

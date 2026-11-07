@@ -27,7 +27,7 @@ export default class Usuario extends compose(BaseModel, AuthFinder) {
   declare passwordHash: string
 
   @column()
-  declare rol: RolUsuario | string
+  declare rol: RolUsuario
 
   @column()
   declare estaActivo: boolean

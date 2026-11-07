@@ -9,3 +9,4 @@ docs/internal/
 internal/
 docs/*.pdf
 docs/**/*.pdf
+.opencode/

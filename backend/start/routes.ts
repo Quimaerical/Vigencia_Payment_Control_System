@@ -35,10 +35,11 @@ router
       .prefix('account')
       .as('profile')
       .use(middleware.auth())
+
+    router
+      .group(() => {
+        router.post('pagos', [PagosController, 'procesarPago'])
+      })
+      .use(middleware.auth())
   })
   .prefix('/api/v1')
-
-// Agrupamos las rutas bajo el prefijo /api
-router.group(() => {
-  router.post('/pagos', [PagosController, 'procesarPago'])
-}).prefix('/api')

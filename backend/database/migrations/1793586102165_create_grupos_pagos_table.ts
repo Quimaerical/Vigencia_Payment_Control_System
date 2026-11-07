@@ -8,7 +8,7 @@ export default class extends BaseSchema {
       table.increments('id').primary()
       table.string('nombre', 100).unique().notNullable()
       table.text('descripcion').nullable()
-      
+
       table.boolean('esta_activo').defaultTo(true)
       table.timestamp('creado_en', { useTz: true }).defaultTo(this.now())
       table.timestamp('actualizado_en', { useTz: true }).defaultTo(this.now())

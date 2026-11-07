@@ -13,7 +13,6 @@ export const signupValidator = vine.create({
   username: username().unique({ table: 'usuarios', column: 'username' }),
   password: password(),
   passwordConfirmation: password().sameAs('password').optional(),
-  rol: vine.enum(['administrador', 'generador', 'receptor'] as const).optional(),
 })
 
 /**

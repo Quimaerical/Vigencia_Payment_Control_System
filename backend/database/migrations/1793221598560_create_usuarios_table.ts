@@ -18,12 +18,12 @@ export default class extends BaseSchema {
       table.increments('id').primary()
       table.string('username', 50).unique().notNullable()
       table.string('password_hash', 255).notNullable()
-      
+
       // Asignar el tipo ENUM creado previamente
       table.specificType('rol', 'rol_usuario').notNullable()
-      
+
       table.boolean('esta_activo').defaultTo(true)
-      
+
       // Manejo de fecha de creación exigido en el requerimiento
       table.timestamp('creado_en', { useTz: true }).defaultTo(this.now())
     })

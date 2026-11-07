@@ -8,7 +8,17 @@ import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
 export class AuditLogSchema extends BaseModel {
-  static $columns = ['accion', 'creadoEn', 'datosAnteriores', 'datosNuevos', 'direccionIp', 'id', 'registroId', 'tablaAfectada', 'usuarioId'] as const
+  static $columns = [
+    'accion',
+    'creadoEn',
+    'datosAnteriores',
+    'datosNuevos',
+    'direccionIp',
+    'id',
+    'registroId',
+    'tablaAfectada',
+    'usuarioId',
+  ] as const
   $columns = AuditLogSchema.$columns
   @column()
   declare accion: string
@@ -31,7 +41,18 @@ export class AuditLogSchema extends BaseModel {
 }
 
 export class AuthAccessTokenSchema extends BaseModel {
-  static $columns = ['abilities', 'createdAt', 'expiresAt', 'hash', 'id', 'lastUsedAt', 'name', 'tokenableId', 'type', 'updatedAt'] as const
+  static $columns = [
+    'abilities',
+    'createdAt',
+    'expiresAt',
+    'hash',
+    'id',
+    'lastUsedAt',
+    'name',
+    'tokenableId',
+    'type',
+    'updatedAt',
+  ] as const
   $columns = AuthAccessTokenSchema.$columns
   @column()
   declare abilities: string
@@ -56,7 +77,18 @@ export class AuthAccessTokenSchema extends BaseModel {
 }
 
 export class DeudaSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'creadoEn', 'estado', 'fechaVencimiento', 'grupoPagoId', 'id', 'montoOriginal', 'personaId', 'proyectoId', 'saldoPendiente'] as const
+  static $columns = [
+    'actualizadoEn',
+    'creadoEn',
+    'estado',
+    'fechaVencimiento',
+    'grupoPagoId',
+    'id',
+    'montoOriginal',
+    'personaId',
+    'proyectoId',
+    'saldoPendiente',
+  ] as const
   $columns = DeudaSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -81,7 +113,14 @@ export class DeudaSchema extends BaseModel {
 }
 
 export class GruposPagoSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'creadoEn', 'descripcion', 'estaActivo', 'id', 'nombre'] as const
+  static $columns = [
+    'actualizadoEn',
+    'creadoEn',
+    'descripcion',
+    'estaActivo',
+    'id',
+    'nombre',
+  ] as const
   $columns = GruposPagoSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -98,7 +137,18 @@ export class GruposPagoSchema extends BaseModel {
 }
 
 export class PagoSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'creadoEn', 'estado', 'fechaPago', 'id', 'metodoPago', 'montoTotal', 'numeroReferencia', 'personaId', 'usuarioId'] as const
+  static $columns = [
+    'actualizadoEn',
+    'creadoEn',
+    'estado',
+    'fechaPago',
+    'id',
+    'metodoPago',
+    'montoTotal',
+    'numeroReferencia',
+    'personaId',
+    'usuarioId',
+  ] as const
   $columns = PagoSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -123,7 +173,16 @@ export class PagoSchema extends BaseModel {
 }
 
 export class PersonaSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'apellidos', 'correo', 'creadoEn', 'estaActivo', 'id', 'identificacion', 'nombres'] as const
+  static $columns = [
+    'actualizadoEn',
+    'apellidos',
+    'correo',
+    'creadoEn',
+    'estaActivo',
+    'id',
+    'identificacion',
+    'nombres',
+  ] as const
   $columns = PersonaSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -144,7 +203,14 @@ export class PersonaSchema extends BaseModel {
 }
 
 export class ProrrateoSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'creadoEn', 'deudaId', 'id', 'montoAplicado', 'pagoId'] as const
+  static $columns = [
+    'actualizadoEn',
+    'creadoEn',
+    'deudaId',
+    'id',
+    'montoAplicado',
+    'pagoId',
+  ] as const
   $columns = ProrrateoSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -161,7 +227,15 @@ export class ProrrateoSchema extends BaseModel {
 }
 
 export class ProyectoSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'codigo', 'creadoEn', 'descripcion', 'estaActivo', 'id', 'nombre'] as const
+  static $columns = [
+    'actualizadoEn',
+    'codigo',
+    'creadoEn',
+    'descripcion',
+    'estaActivo',
+    'id',
+    'nombre',
+  ] as const
   $columns = ProyectoSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null

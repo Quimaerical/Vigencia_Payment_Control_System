@@ -12,12 +12,16 @@
 |
 */
 
-import { Bouncer } from '@adonisjs/bouncer'
+import { Bouncer, AuthorizationResponse } from '@adonisjs/bouncer'
+import type Usuario from '#models/usuario'
+import { RolUsuario } from '@app/shared'
 
-/**
- * Delete the following ability to start from
- * scratch
- */
-export const editUser = Bouncer.ability(() => {
+export const registrarPago = Bouncer.ability((user: Usuario) => {
+  if (user.rol !== RolUsuario.RECEPTOR) {
+    return AuthorizationResponse.deny(
+      'Solo los usuarios con rol receptor pueden procesar pagos',
+      403
+    )
+  }
   return true
 })
