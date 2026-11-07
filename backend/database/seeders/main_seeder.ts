@@ -4,9 +4,20 @@ import Persona from '#models/persona'
 import Proyecto from '#models/proyecto'
 import GrupoPago from '#models/grupo_pago'
 import Deuda from '#models/deuda'
+import Usuario from '#models/usuario'
 
 export default class extends BaseSeeder {
   async run() {
+    await Usuario.firstOrCreate(
+      { username: 'operador_receptor' },
+      {
+        username: 'operador_receptor',
+        passwordHash: 'password123',
+        rol: 'receptor',
+        estaActivo: true,
+      }
+    )
+
     const persona = await Persona.create({
       identificacion: 'V-12345678',
       nombres: 'Edgar',

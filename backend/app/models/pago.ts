@@ -3,6 +3,7 @@ import { BaseModel, column, belongsTo, hasMany } from '@adonisjs/lucid/orm'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import Persona from './persona.js'
 import Prorrateo from './prorrateo.js'
+import Usuario from './usuario.js'
 
 export default class Pago extends BaseModel {
   @column({ isPrimary: true })
@@ -38,6 +39,9 @@ export default class Pago extends BaseModel {
   // Relaciones
   @belongsTo(() => Persona)
   declare persona: BelongsTo<typeof Persona>
+
+  @belongsTo(() => Usuario)
+  declare usuario: BelongsTo<typeof Usuario>
 
   @hasMany(() => Prorrateo)
   declare prorrateos: HasMany<typeof Prorrateo>

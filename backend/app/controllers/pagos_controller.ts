@@ -6,19 +6,28 @@ import Prorrateo from '#models/prorrateo'
 import AuditLog from '#models/audit_log'
 
 export default class PagosController {
-  public async procesarPago({ request, response }: HttpContext) {
-    const { personaId, montoTotal, metodoPago, numeroReferencia, fechaPago } = request.only([
-      'personaId', 'montoTotal', 'metodoPago', 'numeroReferencia', 'fechaPago'
+  public async procesarPago({ request, response, auth }: HttpContext) {
+    const { personaId, montoTotal, metodoPago, numeroReferencia, fechaPago, proyectoId } = request.only([
+      'personaId',
+      'montoTotal',
+      'metodoPago',
+      'numeroReferencia',
+      'fechaPago',
+      'proyectoId',
     ])
 
-    // 1. Iniciar Transacción de Base de Datos (Seguridad Financiera)
+    // Determinar el usuario que procesa la operación (autenticado o suministrado)
+    const usuarioId = auth?.user?.id ?? request.input('usuarioId') ?? 1
+
+    // 1. Iniciar Transacción de Base de Datos (Seguridad Financiera y Concurrencia ACID)
     const trx = await db.transaction()
 
     try {
       // 2. Registrar el Pago Maestro
       const pago = new Pago()
-      pago.personaId = personaId
-      pago.montoTotal = montoTotal
+      pago.personaId = Number(personaId)
+      pago.usuarioId = Number(usuarioId)
+      pago.montoTotal = Number(montoTotal)
       pago.metodoPago = metodoPago
       pago.numeroReferencia = numeroReferencia
       pago.fechaPago = fechaPago
@@ -26,24 +35,33 @@ export default class PagosController {
       await pago.save()
 
       // 3. FIFO: Buscar deudas pendientes ordenadas por fecha de vencimiento más antigua
-      const deudasPendientes = await Deuda.query({ client: trx })
-        .where('personaId', personaId)
+      // Nota técnica: Se usan nombres exactos en snake_case para las columnas de la consulta SQL
+      const query = Deuda.query({ client: trx })
+        .forUpdate()
+        .where('persona_id', Number(personaId))
         .where('estado', 'pendiente')
-        .where('saldoPendiente', '>', 0)
-        .orderBy('fechaVencimiento', 'asc')
+        .where('saldo_pendiente', '>', 0)
+        .orderBy('fecha_vencimiento', 'asc')
 
-      let montoRestante = Number(montoTotal)
+      if (proyectoId) {
+        query.where('proyecto_id', Number(proyectoId))
+      }
 
-      // 4. Algoritmo de Prorrateo
+      const deudasPendientes = await query
+
+      let montoRestante = Number(Number(montoTotal).toFixed(2))
+
+      // 4. Algoritmo de Prorrateo e Imputación FIFO
       for (const deuda of deudasPendientes) {
         if (montoRestante <= 0) break
 
-        const saldoActual = Number(deuda.saldoPendiente)
-        const montoAAplicar = Math.min(saldoActual, montoRestante)
-        
-        // Actualizar el saldo de la deuda
-        deuda.saldoPendiente = saldoActual - montoAAplicar
-        if (deuda.saldoPendiente === 0) {
+        const saldoActual = Number(Number(deuda.saldoPendiente).toFixed(2))
+        const montoAAplicar = Number(Math.min(saldoActual, montoRestante).toFixed(2))
+
+        // Actualizar el saldo de la deuda con precisión de 2 decimales
+        const nuevoSaldo = Number((saldoActual - montoAAplicar).toFixed(2))
+        deuda.saldoPendiente = nuevoSaldo
+        if (nuevoSaldo === 0) {
           deuda.estado = 'pagada'
         }
         deuda.useTransaction(trx)
@@ -57,7 +75,7 @@ export default class PagosController {
         prorrateo.useTransaction(trx)
         await prorrateo.save()
 
-        montoRestante -= montoAAplicar
+        montoRestante = Number((montoRestante - montoAAplicar).toFixed(2))
       }
 
       // 5. Registro de Auditoría Forense
@@ -65,7 +83,14 @@ export default class PagosController {
       audit.accion = 'PROCESAR_PAGO_FIFO'
       audit.tablaAfectada = 'pagos'
       audit.registroId = pago.id
-      audit.datosNuevos = { montoTotal, personaId, saldoSobrante: montoRestante }
+      audit.usuarioId = Number(usuarioId)
+      audit.direccionIp = request.ip()
+      audit.datosNuevos = {
+        montoTotal,
+        personaId,
+        proyectoId: proyectoId ?? null,
+        saldoSobrante: montoRestante,
+      }
       audit.useTransaction(trx)
       await audit.save()
 
@@ -75,16 +100,15 @@ export default class PagosController {
       return response.status(201).json({
         mensaje: 'Pago procesado exitosamente mediante FIFO',
         pagoId: pago.id,
-        montoSobrante: montoRestante
+        montoSobrante: montoRestante,
       })
-
     } catch (error) {
       // 7. Rollback: Revertir todo si hay error
       await trx.rollback()
       const mensajeError = error instanceof Error ? error.message : 'Error desconocido al procesar el pago'
       return response.status(500).json({
         mensaje: 'Error procesando el pago. Transacción revertida.',
-        error: mensajeError
+        error: mensajeError,
       })
     }
   }
