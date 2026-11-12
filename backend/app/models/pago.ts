@@ -4,6 +4,7 @@ import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import Persona from './persona.js'
 import Prorrateo from './prorrateo.js'
 import Usuario from './usuario.js'
+import SolicitudPago from './solicitud_pago.js'
 
 export default class Pago extends BaseModel {
   @column({ isPrimary: true })
@@ -14,6 +15,9 @@ export default class Pago extends BaseModel {
 
   @column()
   declare usuarioId: number
+
+  @column()
+  declare solicitudId: number | null
 
   @column()
   declare montoTotal: number
@@ -30,6 +34,15 @@ export default class Pago extends BaseModel {
   @column()
   declare estado: string
 
+  @column()
+  declare motivoAnulacion: string | null
+
+  @column()
+  declare anuladoPorId: number | null
+
+  @column.dateTime()
+  declare fechaAnulacion: DateTime | null
+
   @column.dateTime({ autoCreate: true })
   declare creadoEn: DateTime
 
@@ -42,6 +55,12 @@ export default class Pago extends BaseModel {
 
   @belongsTo(() => Usuario)
   declare usuario: BelongsTo<typeof Usuario>
+
+  @belongsTo(() => SolicitudPago, { foreignKey: 'solicitudId' })
+  declare solicitudPago: BelongsTo<typeof SolicitudPago>
+
+  @belongsTo(() => Usuario, { foreignKey: 'anuladoPorId' })
+  declare anuladoPor: BelongsTo<typeof Usuario>
 
   @hasMany(() => Prorrateo)
   declare prorrateos: HasMany<typeof Prorrateo>

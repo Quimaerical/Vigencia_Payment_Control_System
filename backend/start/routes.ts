@@ -23,7 +23,7 @@ router
     router
       .group(() => {
         router.post('registro', [UsuariosController, 'registro'])
-        router.post('signup', [UsuariosController, 'registro'])
+        router.post('signup', [UsuariosController, 'registro']).as('signup')
         router.post('login', [SesionesController, 'login'])
       })
       .prefix('auth')
@@ -32,7 +32,7 @@ router
     router
       .group(() => {
         router.get('perfil', [UsuariosController, 'perfil'])
-        router.get('profile', [UsuariosController, 'perfil'])
+        router.get('profile', [UsuariosController, 'perfil']).as('profile_alias')
         router.post('logout', [SesionesController, 'logout'])
       })
       .prefix('account')

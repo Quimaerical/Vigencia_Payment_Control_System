@@ -40,18 +40,34 @@ export default class PagosController {
 
     // 2. Validación de entrada con VineJS
     const payload = await request.validateUsing(procesarPagoValidator)
-    const { personaId, proyectoId, montoTotal, metodoPago, numeroReferencia, fechaPago } = payload
+    const {
+      personaId,
+      proyectoId,
+      solicitudId,
+      montoTotal,
+      metodoPago,
+      numeroReferencia,
+      fechaPago,
+    } = payload
 
     const montoTotalRedondeado = Number(Number(montoTotal).toFixed(2))
 
     // 3. Ejecución transaccional ACID con bloqueo pesimista
     return await db.transaction(async (trx) => {
+      if (trx.dialect.name === 'postgres') {
+        await trx.rawQuery(`SELECT set_config('app.current_user_id', ?, true)`, [
+          String(usuario.id),
+        ])
+        await trx.rawQuery(`SELECT set_config('app.current_ip', ?, true)`, [request.ip()])
+        await trx.rawQuery(`SELECT set_config('app.skip_auto_audit', 'true', true)`)
+      }
+
       // 3.1 FIFO: Buscar deudas pendientes del proyecto ordenadas por vencimiento más antiguo
       const deudasPendientes = await Deuda.query({ client: trx })
         .forUpdate()
         .where('persona_id', Number(personaId))
         .where('proyecto_id', Number(proyectoId))
-        .where('estado', 'pendiente')
+        .whereIn('estado', ['pendiente', 'abonado'])
         .where('saldo_pendiente', '>', 0)
         .orderBy('fecha_vencimiento', 'asc')
 
@@ -82,6 +98,7 @@ export default class PagosController {
       const pago = new Pago()
       pago.personaId = Number(personaId)
       pago.usuarioId = usuario.id
+      pago.solicitudId = solicitudId ? Number(solicitudId) : null
       pago.montoTotal = montoTotalRedondeado
       pago.metodoPago = metodoPago
       pago.numeroReferencia = numeroReferencia ?? null

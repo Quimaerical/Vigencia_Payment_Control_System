@@ -8,6 +8,10 @@ import { type AccessToken, DbAccessTokensProvider } from '@adonisjs/auth/access_
 import type { RolUsuario } from '@app/shared'
 import Pago from './pago.js'
 import AuditLog from './audit_log.js'
+import Asignacion from './asignacion.js'
+import SolicitudPago from './solicitud_pago.js'
+import CajaChica from './caja_chica.js'
+import ValeCaja from './vale_caja.js'
 
 /**
  * Configuración del mixin de autenticación oficial de AdonisJS (AuthFinder):
@@ -56,4 +60,22 @@ export default class Usuario extends compose(BaseModel, AuthFinder) {
 
   @hasMany(() => AuditLog)
   declare auditLogs: HasMany<typeof AuditLog>
+
+  @hasMany(() => Asignacion, { foreignKey: 'creadoPorId' })
+  declare asignacionesCreadas: HasMany<typeof Asignacion>
+
+  @hasMany(() => SolicitudPago, { foreignKey: 'creadoPorId' })
+  declare solicitudesCreadas: HasMany<typeof SolicitudPago>
+
+  @hasMany(() => SolicitudPago, { foreignKey: 'revisadoPorId' })
+  declare solicitudesRevisadas: HasMany<typeof SolicitudPago>
+
+  @hasMany(() => CajaChica, { foreignKey: 'responsableId' })
+  declare cajasChicas: HasMany<typeof CajaChica>
+
+  @hasMany(() => ValeCaja, { foreignKey: 'tramitadoPorId' })
+  declare valesTramitados: HasMany<typeof ValeCaja>
+
+  @hasMany(() => ValeCaja, { foreignKey: 'aprobadoPorId' })
+  declare valesAprobados: HasMany<typeof ValeCaja>
 }
