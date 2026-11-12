@@ -1,22 +1,22 @@
 <script lang="ts">
-	import { workspaceStore } from '$lib/stores/workspaceStore.svelte';
-	import { financialStore } from '$lib/stores/financialStore.svelte';
+	import { workspaceStore } from '#lib/stores/workspaceStore.svelte';
+	import { financialStore } from '#lib/stores/financialStore.svelte';
 
-	import AmbientAurora from '$lib/components/layout/AmbientAurora.svelte';
-	import TopHeader from '$lib/components/layout/TopHeader.svelte';
-	import SegregationBanner from '$lib/components/layout/SegregationBanner.svelte';
-	import BottomDock from '$lib/components/layout/BottomDock.svelte';
-	import Toast from '$lib/components/layout/Toast.svelte';
+	import AmbientAurora from '#lib/components/layout/AmbientAurora.svelte';
+	import TopHeader from '#lib/components/layout/TopHeader.svelte';
+	import SegregationBanner from '#lib/components/layout/SegregationBanner.svelte';
+	import BottomDock from '#lib/components/layout/BottomDock.svelte';
+	import Toast from '#lib/components/layout/Toast.svelte';
 
-	import OverviewView from '$lib/components/views/OverviewView.svelte';
-	import LedgerView from '$lib/components/views/LedgerView.svelte';
-	import AccrualView from '$lib/components/views/AccrualView.svelte';
-	import FifoView from '$lib/components/views/FifoView.svelte';
-	import AuditView from '$lib/components/views/AuditView.svelte';
+	import OverviewView from '#lib/components/views/OverviewView.svelte';
+	import LedgerView from '#lib/components/views/LedgerView.svelte';
+	import AccrualView from '#lib/components/views/AccrualView.svelte';
+	import FifoView from '#lib/components/views/FifoView.svelte';
+	import AuditView from '#lib/components/views/AuditView.svelte';
 
-	import ModuleCatalogDrawer from '$lib/components/modals/ModuleCatalogDrawer.svelte';
-	import VoidLedgerModal from '$lib/components/modals/VoidLedgerModal.svelte';
-	import FifoPaymentModal from '$lib/components/modals/FifoPaymentModal.svelte';
+	import ModuleCatalogDrawer from '#lib/components/modals/ModuleCatalogDrawer.svelte';
+	import VoidLedgerModal from '#lib/components/modals/VoidLedgerModal.svelte';
+	import FifoPaymentModal from '#lib/components/modals/FifoPaymentModal.svelte';
 </script>
 
 <svelte:head>
