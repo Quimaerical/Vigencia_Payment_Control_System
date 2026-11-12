@@ -13,15 +13,15 @@
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
 			<div
-				class="w-8 h-8 rounded-lg bg-teal-400/15 text-teal-300 flex items-center justify-center border border-teal-400/25"
+				class="flex h-8 w-8 items-center justify-center rounded-lg border border-teal-400/25 bg-teal-400/15 text-teal-300"
 			>
 				<span class="material-symbols-outlined text-[18px]">domain</span>
 			</div>
 			<div>
-				<p class="text-[12px] font-bold text-white leading-none">
+				<p class="text-[12px] leading-none font-bold text-white">
 					{activeProject ? activeProject.nombre : 'Lab de Física Cuántica FACYT'}
 				</p>
-				<p class="text-[10px] font-mono text-neutral-400 mt-0.5">
+				<p class="mt-0.5 font-mono text-[10px] text-neutral-400">
 					{activeProject
 						? activeProject.descripcion
 						: 'Subvención Fonacit #8820 · Período Quincena 10'}
@@ -29,9 +29,9 @@
 			</div>
 		</div>
 		<span
-			class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-400/30 flex items-center gap-1 shadow-[0_0_8px_rgba(16,185,129,0.2)]"
+			class="flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.2)]"
 		>
-			<span class="w-1.5 h-1.5 rounded-full bg-emerald-accent animate-ping"></span> Activo
+			<span class="h-1.5 w-1.5 animate-ping rounded-full bg-emerald-accent"></span> Activo
 		</span>
 	</div>
 </ModularCardWrapper>
