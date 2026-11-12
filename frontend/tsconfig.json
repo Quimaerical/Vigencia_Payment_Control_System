@@ -7,6 +7,8 @@
 			"node"
 		],
 		"paths": {
+			"$lib": ["./src/lib"],
+			"$lib/*": ["./src/lib/*"],
 			"@app/shared": ["../packages/shared/src/index.ts"]
 		}
 	},
