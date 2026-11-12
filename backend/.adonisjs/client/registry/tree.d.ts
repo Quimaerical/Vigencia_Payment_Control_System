@@ -18,4 +18,7 @@ export interface ApiDefinition {
       destroy: typeof routes['profile.access_tokens.destroy']
     }
   }
+  pagos: {
+    procesarPago: typeof routes['pagos.procesar_pago']
+  }
 }

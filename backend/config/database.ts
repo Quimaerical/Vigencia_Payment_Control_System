@@ -19,9 +19,10 @@ const dbConfig = defineConfig({
       connection: env.get('DATABASE_URL')
         ? {
             connectionString: env.get('DATABASE_URL'),
-            ssl: env.get('DB_SSL') || env.get('DATABASE_URL')?.includes('neon.tech')
-              ? { rejectUnauthorized: false }
-              : false,
+            ssl:
+              env.get('DB_SSL') || env.get('DATABASE_URL')?.includes('neon.tech')
+                ? { rejectUnauthorized: false }
+                : false,
           }
         : {
             host: env.get('DB_HOST'),

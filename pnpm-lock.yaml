@@ -35,6 +35,9 @@ importers:
       '@adonisjs/shield':
         specifier: ^9.0.0
         version: 9.0.0(2d2109e1372f1458e93552a5e3d2cc51)
+      '@app/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
       '@japa/api-client':
         specifier: ^3.2.1
         version: 3.2.1(@japa/assert@4.2.0(@japa/runner@5.4.0))(@japa/runner@5.4.0)(supports-color@10.2.2)

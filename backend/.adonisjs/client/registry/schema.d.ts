@@ -59,4 +59,17 @@ export interface Registry {
       rawResponse: ExtractRawResponse<Awaited<ReturnType<import('#controllers/access_tokens_controller').default['destroy']>>>
     }
   }
+  'pagos.procesar_pago': {
+    methods: ["POST"]
+    pattern: '/api/pagos'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/pagos_controller').default['procesarPago']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/pagos_controller').default['procesarPago']>>>
+      rawResponse: ExtractRawResponse<Awaited<ReturnType<import('#controllers/pagos_controller').default['procesarPago']>>>
+    }
+  }
 }

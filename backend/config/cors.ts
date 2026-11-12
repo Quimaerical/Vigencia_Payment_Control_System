@@ -15,15 +15,17 @@ const localOrigins = [
  * Orígenes configurados vía variables de entorno (separados por coma)
  */
 const configuredOrigins = env.get('CORS_ALLOWED_ORIGINS')
-  ? env.get('CORS_ALLOWED_ORIGINS')!.split(',').map((o) => o.trim()).filter(Boolean)
+  ? env
+      .get('CORS_ALLOWED_ORIGINS')!
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean)
   : []
 
 /**
  * Hostname opcional del túnel de Cloudflare
  */
-const tunnelHostname = env.get('TUNNEL_HOSTNAME')
-  ? [`https://${env.get('TUNNEL_HOSTNAME')}`]
-  : []
+const tunnelHostname = env.get('TUNNEL_HOSTNAME') ? [`https://${env.get('TUNNEL_HOSTNAME')}`] : []
 
 const allowedOriginsList = [...localOrigins, ...configuredOrigins, ...tunnelHostname]
 
