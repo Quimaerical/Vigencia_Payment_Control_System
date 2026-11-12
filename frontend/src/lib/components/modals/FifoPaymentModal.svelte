@@ -33,22 +33,22 @@
 
 {#if financialStore.fifoModalOpen && financialStore.selectedDeudaForPayment}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-opacity"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md transition-opacity"
 	>
 		<div
-			class="chroma-glass-card bg-neutral-950/95 w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3 border border-teal-500/30"
+			class="chroma-glass-card w-full max-w-sm space-y-3 rounded-3xl border border-teal-500/30 bg-neutral-950/95 p-5 shadow-2xl"
 		>
-			<div class="flex items-center justify-between pb-2 border-b border-white/10">
+			<div class="flex items-center justify-between border-b border-white/10 pb-2">
 				<div class="flex items-center gap-2">
 					<span
-						class="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center border border-teal-500/30"
+						class="flex h-7 w-7 items-center justify-center rounded-lg border border-teal-500/30 bg-teal-500/20 text-teal-300"
 					>
 						<span class="material-symbols-outlined text-[18px]">payments</span>
 					</span>
-					<h3 class="font-bold text-[13px] text-white">Desembolso FIFO</h3>
+					<h3 class="text-[13px] font-bold text-white">Desembolso FIFO</h3>
 				</div>
 				<button
-					class="w-7 h-7 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10"
+					class="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white"
 					onclick={() => financialStore.closeFifoPaymentModal()}
 				>
 					<span class="material-symbols-outlined text-[18px]">close</span>
@@ -56,19 +56,24 @@
 			</div>
 
 			<div
-				class="p-2.5 rounded-xl bg-teal-500/10 border border-teal-400/30 text-[11px] text-teal-200 leading-tight"
+				class="rounded-xl border border-teal-400/30 bg-teal-500/10 p-2.5 text-[11px] leading-tight text-teal-200"
 			>
-				Imputación directa sobre la deuda más antigua: <strong>{financialStore.selectedDeudaForPayment.descripcion}</strong>.
+				Imputación directa sobre la deuda más antigua: <strong
+					>{financialStore.selectedDeudaForPayment.descripcion}</strong
+				>.
 			</div>
 
 			<div class="space-y-2 text-[11px]">
 				<div>
-					<label for="modal-monto-amortizar" class="font-mono text-neutral-400 block mb-0.5 text-[10px]">
+					<label
+						for="modal-monto-amortizar"
+						class="mb-0.5 block font-mono text-[10px] text-neutral-400"
+					>
 						Monto a Amortizar (USD)
 					</label>
 					<input
 						id="modal-monto-amortizar"
-						class="w-full bg-neutral-900 border border-white/15 font-mono font-bold px-2.5 py-1.5 rounded-xl text-teal-300 focus:ring-1 focus:ring-teal-400"
+						class="w-full rounded-xl border border-white/15 bg-neutral-900 px-2.5 py-1.5 font-mono font-bold text-teal-300 focus:ring-1 focus:ring-teal-400"
 						type="number"
 						bind:value={montoPagar}
 						min="0.01"
@@ -78,25 +83,30 @@
 				</div>
 
 				<div>
-					<label for="modal-metodo-pago" class="font-mono text-neutral-400 block mb-0.5 text-[10px]">Método de Pago</label>
+					<label for="modal-metodo-pago" class="mb-0.5 block font-mono text-[10px] text-neutral-400"
+						>Método de Pago</label
+					>
 					<select
 						id="modal-metodo-pago"
-						class="w-full bg-neutral-900 border border-white/15 text-white font-mono px-2.5 py-1.5 rounded-xl focus:ring-1 focus:ring-teal-400"
+						class="w-full rounded-xl border border-white/15 bg-neutral-900 px-2.5 py-1.5 font-mono text-white focus:ring-1 focus:ring-teal-400"
 						bind:value={metodoSeleccionado}
 					>
-						{#each Object.values(MetodoPago) as metodo}
+						{#each Object.values(MetodoPago) as metodo (metodo)}
 							<option value={metodo}>{metodo.toUpperCase()}</option>
 						{/each}
 					</select>
 				</div>
 
 				<div>
-					<label for="modal-referencia-bancaria" class="font-mono text-neutral-400 block mb-0.5 text-[10px]">
+					<label
+						for="modal-referencia-bancaria"
+						class="mb-0.5 block font-mono text-[10px] text-neutral-400"
+					>
 						Referencia / Comprobante
 					</label>
 					<input
 						id="modal-referencia-bancaria"
-						class="w-full bg-neutral-900 border border-white/15 font-mono text-white px-2.5 py-1.5 rounded-xl focus:ring-1 focus:ring-teal-400"
+						class="w-full rounded-xl border border-white/15 bg-neutral-900 px-2.5 py-1.5 font-mono text-white focus:ring-1 focus:ring-teal-400"
 						placeholder="Ej: REF-992019 / Transferencia"
 						type="text"
 						bind:value={referencia}
@@ -104,15 +114,15 @@
 				</div>
 			</div>
 
-			<div class="pt-2 border-t border-white/10 flex items-center justify-end gap-2 text-[11px]">
+			<div class="flex items-center justify-end gap-2 border-t border-white/10 pt-2 text-[11px]">
 				<button
-					class="px-3 py-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10"
+					class="rounded-xl px-3 py-1.5 text-neutral-400 hover:bg-white/10 hover:text-white"
 					onclick={() => financialStore.closeFifoPaymentModal()}
 				>
 					Cancelar
 				</button>
 				<button
-					class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-mint-400 text-neutral-950 font-bold shadow-md shadow-teal-500/20 active:scale-95 transition-all flex items-center gap-1"
+					class="flex items-center gap-1 rounded-xl bg-gradient-to-r from-teal-500 to-mint-400 px-3.5 py-1.5 font-bold text-neutral-950 shadow-md shadow-teal-500/20 transition-all active:scale-95"
 					onclick={handlePagar}
 				>
 					<span class="material-symbols-outlined text-[15px]">send</span>
