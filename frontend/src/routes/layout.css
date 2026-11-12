@@ -1,1 +1,261 @@
 @import 'tailwindcss';
+
+@theme {
+	--font-headline: 'Plus Jakarta Sans', sans-serif;
+	--font-body: 'Inter', sans-serif;
+	--font-mono: 'JetBrains Mono', monospace;
+
+	--color-primary: #00685f;
+	--color-primary-container: #008378;
+	--color-primary-dark: #0f766e;
+	--color-primary-light: #5eead4;
+
+	--color-mint-50: #f0fdf9;
+	--color-mint-100: #ccfbf1;
+	--color-mint-200: #99f6e4;
+	--color-mint-300: #5eead4;
+	--color-mint-400: #2dd4bf;
+	--color-mint-500: #14b8a6;
+	--color-mint-600: #0d9488;
+	--color-mint-700: #0f766e;
+	--color-mint-800: #115e59;
+	--color-mint-900: #134e4a;
+
+	--color-emerald-accent: #10b981;
+	--color-warm-amber: #f59e0b;
+	--color-warm-rose: #f43f5e;
+}
+
+/* Material Symbols Outlined Configuration */
+.material-symbols-outlined {
+	font-family: 'Material Symbols Outlined';
+	font-weight: normal;
+	font-style: normal;
+	font-size: 20px;
+	line-height: 1;
+	letter-spacing: normal;
+	text-transform: none;
+	display: inline-block;
+	white-space: nowrap;
+	word-wrap: normal;
+	direction: ltr;
+	-webkit-font-feature-settings: 'liga';
+	-webkit-font-smoothing: antialiased;
+	vertical-align: middle;
+}
+
+/* CONTINUOUS AMBIENT FLOATING IRIDESCENT AURORA ANIMATIONS */
+@keyframes floatAurora1 {
+	0% {
+		transform: translate(0px, 0px) scale(1) rotate(0deg);
+	}
+	33% {
+		transform: translate(50px, -60px) scale(1.2) rotate(16deg);
+	}
+	66% {
+		transform: translate(-35px, 45px) scale(0.9) rotate(-10deg);
+	}
+	100% {
+		transform: translate(0px, 0px) scale(1) rotate(0deg);
+	}
+}
+
+@keyframes floatAurora2 {
+	0% {
+		transform: translate(0px, 0px) scale(1) rotate(0deg);
+	}
+	33% {
+		transform: translate(-55px, 45px) scale(1.15) rotate(-18deg);
+	}
+	66% {
+		transform: translate(40px, -50px) scale(0.88) rotate(12deg);
+	}
+	100% {
+		transform: translate(0px, 0px) scale(1) rotate(0deg);
+	}
+}
+
+@keyframes pulseGlow {
+	0%,
+	100% {
+		opacity: 0.4;
+		filter: blur(105px);
+	}
+	50% {
+		opacity: 0.65;
+		filter: blur(120px);
+	}
+}
+
+.aurora-dark-1 {
+	animation:
+		floatAurora1 20s ease-in-out infinite,
+		pulseGlow 9s ease-in-out infinite alternate;
+}
+
+.aurora-dark-2 {
+	animation:
+		floatAurora2 24s ease-in-out infinite,
+		pulseGlow 11s ease-in-out infinite alternate 2s;
+}
+
+.aurora-dark-3 {
+	animation:
+		floatAurora1 28s ease-in-out infinite 3s,
+		pulseGlow 10s ease-in-out infinite alternate 1.5s;
+}
+
+/* ANIMATED GLASS SHIMMER ACROSS MODULES */
+@keyframes glassShimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+.shimmer-glass {
+	position: relative;
+	overflow: hidden;
+}
+
+.shimmer-glass::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: linear-gradient(
+		110deg,
+		transparent 25%,
+		rgba(255, 255, 255, 0.08) 45%,
+		rgba(45, 212, 191, 0.12) 50%,
+		transparent 65%
+	);
+	background-size: 200% 100%;
+	animation: glassShimmer 9s linear infinite;
+	pointer-events: none;
+}
+
+/* TAB TRANSITIONS */
+@keyframes tabSlideUp {
+	from {
+		opacity: 0;
+		transform: translateY(12px) scale(0.99);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.view-panel {
+	animation: tabSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* REFINED OLED IRIDESCENT GLASSMORPHISM WITH SPECULAR HIGHLIGHTS */
+.dark .chroma-glass-card {
+	background: rgba(8, 12, 16, 0.65);
+	backdrop-filter: blur(28px) saturate(210%);
+	-webkit-backdrop-filter: blur(28px) saturate(210%);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	box-shadow:
+		inset 0 1px 1px rgba(255, 255, 255, 0.18),
+		inset 0 -1px 1px rgba(20, 184, 166, 0.15),
+		-1.5px -1.5px 0px rgba(45, 212, 191, 0.22),
+		1.5px 1.5px 0px rgba(217, 70, 239, 0.18),
+		0 20px 48px -10px rgba(0, 0, 0, 0.95);
+	transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chroma-glass-card {
+	background: rgba(255, 255, 255, 0.72);
+	backdrop-filter: blur(28px) saturate(190%);
+	-webkit-backdrop-filter: blur(28px) saturate(190%);
+	border: 1px solid rgba(255, 255, 255, 0.85);
+	box-shadow:
+		inset 0 1.5px 2px rgba(255, 255, 255, 0.95),
+		-1.5px -1.5px 0px rgba(45, 212, 191, 0.3),
+		1.5px 1.5px 0px rgba(244, 114, 182, 0.22),
+		0 14px 34px -8px rgba(13, 78, 74, 0.08);
+	transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .chroma-glass-dock {
+	background: rgba(6, 9, 12, 0.82);
+	backdrop-filter: blur(32px) saturate(220%);
+	-webkit-backdrop-filter: blur(32px) saturate(220%);
+	border-top: 1px solid rgba(255, 255, 255, 0.14);
+	box-shadow:
+		inset 0 1px 1px rgba(255, 255, 255, 0.16),
+		0 -8px 36px rgba(0, 0, 0, 0.88),
+		0 0 20px rgba(20, 184, 166, 0.15);
+}
+
+.chroma-glass-dock {
+	background: rgba(255, 255, 255, 0.75);
+	backdrop-filter: blur(32px) saturate(200%);
+	-webkit-backdrop-filter: blur(32px) saturate(200%);
+	border-top: 1px solid rgba(255, 255, 255, 0.9);
+	box-shadow: 0 -8px 32px rgba(13, 148, 136, 0.12);
+}
+
+/* WORKSPACE CUSTOMIZATION MODE STYLING & ANIMATIONS */
+.customizing-mode .modular-card {
+	border: 1.5px dashed #2dd4bf !important;
+	animation: gentle-wobble 2.8s ease-in-out infinite alternate;
+	box-shadow: 0 0 20px rgba(45, 212, 191, 0.35) !important;
+}
+
+@keyframes gentle-wobble {
+	0% {
+		transform: rotate(0deg);
+	}
+	30% {
+		transform: rotate(0.4deg);
+	}
+	70% {
+		transform: rotate(-0.4deg);
+	}
+	100% {
+		transform: rotate(0deg);
+	}
+}
+
+/* PROGRESS BAR EXPANSION ANIMATION */
+@keyframes fillProgress {
+	from {
+		width: 0%;
+	}
+}
+
+.animate-fill {
+	animation: fillProgress 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Micro-Physics on interactive elements */
+.interactive-spring {
+	transition:
+		transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+		box-shadow 0.22s ease;
+}
+
+.interactive-spring:active {
+	transform: scale(0.95);
+}
+
+/* Vector grid pattern with subtle luminous tint */
+.grid-pattern {
+	background-size: 32px 32px;
+	background-image:
+		linear-gradient(to right, rgba(45, 212, 191, 0.05) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(45, 212, 191, 0.05) 1px, transparent 1px);
+}
+
+.light .grid-pattern {
+	background-image:
+		linear-gradient(to right, rgba(13, 148, 136, 0.08) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(13, 148, 136, 0.08) 1px, transparent 1px);
+}
