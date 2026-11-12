@@ -135,7 +135,10 @@ class WorkspaceStore {
 			target.habilitado = false;
 			this.modules = this.modules.filter((m) => m.id !== id);
 			this.persistModules();
-			this.showToast(`"${target.nombre}" eliminado. Puedes restaurarlo desde el Catálogo`, 'delete');
+			this.showToast(
+				`"${target.nombre}" eliminado. Puedes restaurarlo desde el Catálogo`,
+				'delete'
+			);
 		}
 	}
 

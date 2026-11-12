@@ -35,7 +35,7 @@
 <FifoPaymentModal />
 
 <!-- 4. Main App Container (relative z-10) -->
-<div class="relative z-10 flex flex-col min-h-screen pb-28 max-w-2xl mx-auto" id="appRoot">
+<div class="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col pb-28" id="appRoot">
 	<!-- Top Sticky App Bar (z-30) -->
 	<TopHeader />
 
@@ -44,9 +44,11 @@
 
 	<!-- Stale-While-Revalidate Offline Status Indicator -->
 	{#if financialStore.isOffline}
-		<div class="mx-2 mt-1 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-400/30 text-amber-300 text-[10px] font-mono flex items-center justify-between">
+		<div
+			class="mx-2 mt-1 flex items-center justify-between rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-1 font-mono text-[10px] text-amber-300"
+		>
 			<span class="flex items-center gap-1.5">
-				<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+				<span class="h-2 w-2 animate-pulse rounded-full bg-amber-400"></span>
 				<span>Modo Offline: Datos servidos desde la caché local sin base de datos</span>
 			</span>
 			<span>{financialStore.lastSyncTimestamp}</span>
@@ -54,7 +56,7 @@
 	{/if}
 
 	<!-- Main Multi-View Tabs Content -->
-	<main class="px-2.5 mt-2 space-y-3.5" id="viewContainer">
+	<main class="mt-2 space-y-3.5 px-2.5" id="viewContainer">
 		{#if workspaceStore.currentTab === 'overview'}
 			<OverviewView />
 		{:else if workspaceStore.currentTab === 'ledger'}

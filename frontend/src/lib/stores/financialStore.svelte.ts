@@ -112,7 +112,9 @@ class FinancialStore {
 
 		// Actualizar KPIs
 		this.kpis.totalPagado = Number((this.kpis.totalPagado + montoAAplicar).toFixed(2));
-		this.kpis.saldoExigible = Number(Math.max(0, this.kpis.saldoExigible - montoAAplicar).toFixed(2));
+		this.kpis.saldoExigible = Number(
+			Math.max(0, this.kpis.saldoExigible - montoAAplicar).toFixed(2)
+		);
 		this.kpis.porcentajeCubierto = Number(
 			((this.kpis.totalPagado / this.kpis.totalCausado) * 100).toFixed(1)
 		);

@@ -16,7 +16,10 @@ export class ApiClient {
 	private static getBaseUrl(): string {
 		if (typeof window !== 'undefined') {
 			// Soporta anulación por variable de entorno o fallback a localhost:3333
-			return (window as unknown as { __ENV_API_URL__?: string }).__ENV_API_URL__ || 'http://localhost:3333/api/v1';
+			return (
+				(window as unknown as { __ENV_API_URL__?: string }).__ENV_API_URL__ ||
+				'http://localhost:3333/api/v1'
+			);
 		}
 		return 'http://localhost:3333/api/v1';
 	}
