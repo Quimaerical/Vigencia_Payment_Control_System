@@ -25,6 +25,7 @@ const TABLAS_FINANCIERAS_INMUTABLES_DELETE = [
 ]
 
 const TABLAS_FINANCIERAS_RBAC = [
+  'asignaciones',
   'solicitudes_pago',
   'deudas',
   'pagos',
@@ -168,12 +169,14 @@ export default class extends BaseSchema {
         END LOOP;
 
         -- 3.3 Reglas específicas por tabla según matriz RBAC del documento técnico
-        IF TG_TABLE_NAME = 'solicitudes_pago' THEN
+        IF TG_TABLE_NAME IN ('solicitudes_pago', 'asignaciones', 'deudas') THEN
           SELECT rol::TEXT INTO v_rol FROM usuarios WHERE id = NEW.creado_por_id;
           IF v_rol IS DISTINCT FROM 'generador' THEN
-            RAISE EXCEPTION 'Violación RBAC: Solo un usuario con rol generador puede crear solicitudes de pago';
+            RAISE EXCEPTION 'Violación RBAC: Solo un usuario con rol generador puede crear registros en % (la autoría corresponde al rol generador)', TG_TABLE_NAME;
           END IF;
+        END IF;
 
+        IF TG_TABLE_NAME = 'solicitudes_pago' THEN
           IF NEW.revisado_por_id IS NOT NULL THEN
             SELECT rol::TEXT INTO v_rol FROM usuarios WHERE id = NEW.revisado_por_id;
             IF v_rol IS DISTINCT FROM 'receptor' THEN
@@ -240,12 +243,29 @@ export default class extends BaseSchema {
         FOR EACH ROW EXECUTE FUNCTION fn_validar_segregacion_rbac();
       `)
     }
+
+    // 7. Coherencia de inmutabilidad en audit_logs: la baja de usuarios es exclusivamente lógica
+    // (usuarios.esta_activo = false). Se reemplaza ON DELETE SET NULL por ON DELETE RESTRICT
+    // para evitar que un DELETE en usuarios dispare un UPDATE ilegal sobre audit_logs.
+    this.schema.raw(`
+      ALTER TABLE audit_logs
+      DROP CONSTRAINT IF EXISTS audit_logs_usuario_id_foreign,
+      ADD CONSTRAINT audit_logs_usuario_id_foreign
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT;
+    `)
   }
 
   async down() {
     if (this.db.dialect.name !== 'postgres') {
       return
     }
+
+    this.schema.raw(`
+      ALTER TABLE audit_logs
+      DROP CONSTRAINT IF EXISTS audit_logs_usuario_id_foreign,
+      ADD CONSTRAINT audit_logs_usuario_id_foreign
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL;
+    `)
 
     for (const tabla of TABLAS_AUDITABLES) {
       this.schema.raw(`DROP TRIGGER IF EXISTS trg_audit_${tabla} ON ${tabla};`)

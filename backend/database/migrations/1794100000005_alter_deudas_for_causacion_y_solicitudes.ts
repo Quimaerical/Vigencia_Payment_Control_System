@@ -49,9 +49,24 @@ export default class extends BaseSchema {
         .onDelete('RESTRICT')
       table.timestamp('fecha_anulacion', { useTz: true }).nullable()
     })
+
+    if (this.db.dialect.name === 'postgres') {
+      this.schema.raw(`
+        ALTER TABLE ${this.tableName}
+        ADD CONSTRAINT chk_deudas_saldo
+        CHECK (monto_original > 0 AND saldo_pendiente >= 0 AND saldo_pendiente <= monto_original);
+      `)
+    }
   }
 
   async down() {
+    if (this.db.dialect.name === 'postgres') {
+      this.schema.raw(`
+        ALTER TABLE ${this.tableName}
+        DROP CONSTRAINT IF EXISTS chk_deudas_saldo;
+      `)
+    }
+
     this.schema.alterTable(this.tableName, (table) => {
       table.dropForeign(['asignacion_id'])
       table.dropForeign(['solicitud_id'])

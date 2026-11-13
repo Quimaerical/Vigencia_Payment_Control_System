@@ -8,7 +8,19 @@ import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
 export class AsignacioneSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'creadoEn', 'creadoPorId', 'estaActivo', 'fechaFin', 'fechaInicio', 'grupoPagoId', 'id', 'montoPeriodo', 'personaId', 'proyectoId'] as const
+  static $columns = [
+    'actualizadoEn',
+    'creadoEn',
+    'creadoPorId',
+    'estaActivo',
+    'fechaFin',
+    'fechaInicio',
+    'grupoPagoId',
+    'id',
+    'montoPeriodo',
+    'personaId',
+    'proyectoId',
+  ] as const
   $columns = AsignacioneSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -35,16 +47,26 @@ export class AsignacioneSchema extends BaseModel {
 }
 
 export class AuditLogSchema extends BaseModel {
-  static $columns = ['accion', 'creadoEn', 'datosAnteriores', 'datosNuevos', 'direccionIp', 'id', 'registroId', 'tablaAfectada', 'usuarioId'] as const
+  static $columns = [
+    'accion',
+    'creadoEn',
+    'datosAnteriores',
+    'datosNuevos',
+    'direccionIp',
+    'id',
+    'registroId',
+    'tablaAfectada',
+    'usuarioId',
+  ] as const
   $columns = AuditLogSchema.$columns
   @column()
   declare accion: string
   @column.dateTime()
   declare creadoEn: DateTime | null
   @column()
-  declare datosAnteriores: any | null
+  declare datosAnteriores: Record<string, unknown> | null
   @column()
-  declare datosNuevos: any | null
+  declare datosNuevos: Record<string, unknown> | null
   @column()
   declare direccionIp: string | null
   @column({ isPrimary: true })
@@ -58,7 +80,18 @@ export class AuditLogSchema extends BaseModel {
 }
 
 export class AuthAccessTokenSchema extends BaseModel {
-  static $columns = ['abilities', 'createdAt', 'expiresAt', 'hash', 'id', 'lastUsedAt', 'name', 'tokenableId', 'type', 'updatedAt'] as const
+  static $columns = [
+    'abilities',
+    'createdAt',
+    'expiresAt',
+    'hash',
+    'id',
+    'lastUsedAt',
+    'name',
+    'tokenableId',
+    'type',
+    'updatedAt',
+  ] as const
   $columns = AuthAccessTokenSchema.$columns
   @column()
   declare abilities: string
@@ -83,7 +116,24 @@ export class AuthAccessTokenSchema extends BaseModel {
 }
 
 export class CajasChicaSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'anio', 'cajaOrigenId', 'codigo', 'creadoEn', 'estado', 'fechaApertura', 'fechaCierre', 'id', 'mes', 'montoAsignado', 'nombre', 'proyectoId', 'responsableId', 'saldoActual', 'saldoInicial'] as const
+  static $columns = [
+    'actualizadoEn',
+    'anio',
+    'cajaOrigenId',
+    'codigo',
+    'creadoEn',
+    'estado',
+    'fechaApertura',
+    'fechaCierre',
+    'id',
+    'mes',
+    'montoAsignado',
+    'nombre',
+    'proyectoId',
+    'responsableId',
+    'saldoActual',
+    'saldoInicial',
+  ] as const
   $columns = CajasChicaSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -120,7 +170,28 @@ export class CajasChicaSchema extends BaseModel {
 }
 
 export class DeudaSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'anuladoPorId', 'asignacionId', 'creadoEn', 'creadoPorId', 'diasActivos', 'diasPeriodo', 'estado', 'fechaAnulacion', 'fechaVencimiento', 'grupoPagoId', 'id', 'montoOriginal', 'motivoAnulacion', 'periodoFin', 'periodoInicio', 'personaId', 'proyectoId', 'saldoPendiente', 'solicitudId'] as const
+  static $columns = [
+    'actualizadoEn',
+    'anuladoPorId',
+    'asignacionId',
+    'creadoEn',
+    'creadoPorId',
+    'diasActivos',
+    'diasPeriodo',
+    'estado',
+    'fechaAnulacion',
+    'fechaVencimiento',
+    'grupoPagoId',
+    'id',
+    'montoOriginal',
+    'motivoAnulacion',
+    'periodoFin',
+    'periodoInicio',
+    'personaId',
+    'proyectoId',
+    'saldoPendiente',
+    'solicitudId',
+  ] as const
   $columns = DeudaSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -165,12 +236,23 @@ export class DeudaSchema extends BaseModel {
 }
 
 export class GruposPagoSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'configuracionCorte', 'creadoEn', 'descripcion', 'diaCorte1', 'diaCorte2', 'estaActivo', 'id', 'nombre', 'periodicidad'] as const
+  static $columns = [
+    'actualizadoEn',
+    'configuracionCorte',
+    'creadoEn',
+    'descripcion',
+    'diaCorte1',
+    'diaCorte2',
+    'estaActivo',
+    'id',
+    'nombre',
+    'periodicidad',
+  ] as const
   $columns = GruposPagoSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
   @column()
-  declare configuracionCorte: any | null
+  declare configuracionCorte: Record<string, unknown> | null
   @column.dateTime()
   declare creadoEn: DateTime | null
   @column()
@@ -190,7 +272,22 @@ export class GruposPagoSchema extends BaseModel {
 }
 
 export class PagoSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'anuladoPorId', 'creadoEn', 'estado', 'fechaAnulacion', 'fechaPago', 'id', 'metodoPago', 'montoTotal', 'motivoAnulacion', 'numeroReferencia', 'personaId', 'solicitudId', 'usuarioId'] as const
+  static $columns = [
+    'actualizadoEn',
+    'anuladoPorId',
+    'creadoEn',
+    'estado',
+    'fechaAnulacion',
+    'fechaPago',
+    'id',
+    'metodoPago',
+    'montoTotal',
+    'motivoAnulacion',
+    'numeroReferencia',
+    'personaId',
+    'solicitudId',
+    'usuarioId',
+  ] as const
   $columns = PagoSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -223,7 +320,16 @@ export class PagoSchema extends BaseModel {
 }
 
 export class PersonaSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'apellidos', 'correo', 'creadoEn', 'estaActivo', 'id', 'identificacion', 'nombres'] as const
+  static $columns = [
+    'actualizadoEn',
+    'apellidos',
+    'correo',
+    'creadoEn',
+    'estaActivo',
+    'id',
+    'identificacion',
+    'nombres',
+  ] as const
   $columns = PersonaSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -244,7 +350,14 @@ export class PersonaSchema extends BaseModel {
 }
 
 export class ProrrateoSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'creadoEn', 'deudaId', 'id', 'montoAplicado', 'pagoId'] as const
+  static $columns = [
+    'actualizadoEn',
+    'creadoEn',
+    'deudaId',
+    'id',
+    'montoAplicado',
+    'pagoId',
+  ] as const
   $columns = ProrrateoSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -261,7 +374,19 @@ export class ProrrateoSchema extends BaseModel {
 }
 
 export class ProyectoSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'ambito', 'area', 'codigo', 'creadoEn', 'descripcion', 'estaActivo', 'fechaFin', 'fechaInicio', 'id', 'nombre'] as const
+  static $columns = [
+    'actualizadoEn',
+    'ambito',
+    'area',
+    'codigo',
+    'creadoEn',
+    'descripcion',
+    'estaActivo',
+    'fechaFin',
+    'fechaInicio',
+    'id',
+    'nombre',
+  ] as const
   $columns = ProyectoSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -288,7 +413,23 @@ export class ProyectoSchema extends BaseModel {
 }
 
 export class SolicitudesPagoSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'codigo', 'creadoEn', 'creadoPorId', 'estado', 'fechaEnvio', 'fechaRevision', 'grupoPagoId', 'id', 'montoTotal', 'motivoRechazo', 'periodoFin', 'periodoInicio', 'proyectoId', 'revisadoPorId'] as const
+  static $columns = [
+    'actualizadoEn',
+    'codigo',
+    'creadoEn',
+    'creadoPorId',
+    'estado',
+    'fechaEnvio',
+    'fechaRevision',
+    'grupoPagoId',
+    'id',
+    'montoTotal',
+    'motivoRechazo',
+    'periodoFin',
+    'periodoInicio',
+    'proyectoId',
+    'revisadoPorId',
+  ] as const
   $columns = SolicitudesPagoSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null
@@ -357,7 +498,28 @@ export class UsuarioSchema extends BaseModel {
 }
 
 export class ValesCajaSchema extends BaseModel {
-  static $columns = ['actualizadoEn', 'anuladoPorId', 'aprobadoPorId', 'cajaChicaId', 'comprobanteReferencia', 'concepto', 'creadoEn', 'estado', 'fechaAnulacion', 'fechaAprobacion', 'fechaDesembolso', 'fechaRendicion', 'fechaSolicitud', 'id', 'montoRendido', 'montoSolicitado', 'motivoAnulacion', 'motivoRechazo', 'solicitantePersonaId', 'tramitadoPorId'] as const
+  static $columns = [
+    'actualizadoEn',
+    'anuladoPorId',
+    'aprobadoPorId',
+    'cajaChicaId',
+    'comprobanteReferencia',
+    'concepto',
+    'creadoEn',
+    'estado',
+    'fechaAnulacion',
+    'fechaAprobacion',
+    'fechaDesembolso',
+    'fechaRendicion',
+    'fechaSolicitud',
+    'id',
+    'montoRendido',
+    'montoSolicitado',
+    'motivoAnulacion',
+    'motivoRechazo',
+    'solicitantePersonaId',
+    'tramitadoPorId',
+  ] as const
   $columns = ValesCajaSchema.$columns
   @column.dateTime()
   declare actualizadoEn: DateTime | null

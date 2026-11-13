@@ -28,7 +28,7 @@ export default class GrupoPago extends BaseModel {
   declare diaCorte2: number | null
 
   @column()
-  declare configuracionCorte: Record<string, any> | null
+  declare configuracionCorte: Record<string, unknown> | null
 
   @column()
   declare estaActivo: boolean

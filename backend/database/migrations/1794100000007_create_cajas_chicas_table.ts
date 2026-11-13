@@ -50,6 +50,14 @@ export default class extends BaseSchema {
       table.timestamp('creado_en', { useTz: true }).defaultTo(this.now())
       table.timestamp('actualizado_en', { useTz: true }).defaultTo(this.now())
     })
+
+    if (this.db.dialect.name === 'postgres') {
+      this.schema.raw(`
+        ALTER TABLE ${this.tableName}
+        ADD CONSTRAINT chk_cajas_chicas_montos
+        CHECK (saldo_inicial >= 0 AND monto_asignado >= 0 AND saldo_actual >= 0);
+      `)
+    }
   }
 
   async down() {

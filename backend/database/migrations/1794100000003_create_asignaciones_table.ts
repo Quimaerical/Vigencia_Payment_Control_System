@@ -70,6 +70,11 @@ export default class extends BaseSchema {
         ADD CONSTRAINT chk_asignaciones_fechas
         CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio);
       `)
+      this.schema.raw(`
+        CREATE UNIQUE INDEX uq_asignacion_activa
+        ON ${this.tableName} (persona_id, proyecto_id, grupo_pago_id)
+        WHERE esta_activo = true;
+      `)
     }
   }
 

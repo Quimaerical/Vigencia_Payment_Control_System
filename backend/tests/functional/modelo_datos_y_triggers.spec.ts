@@ -18,6 +18,7 @@ import {
   AmbitoProyecto,
   PeriodicidadGrupoPago,
   EstadoSolicitud,
+  EstadoDeuda,
   EstadoCajaChica,
   EstadoValeCaja,
   MetodoPago,
@@ -309,7 +310,7 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
       montoOriginal: 50,
       saldoPendiente: 50,
       fechaVencimiento: DateTime.now().minus({ days: 20 }),
-      estado: 'pendiente',
+      estado: EstadoDeuda.PENDIENTE,
     })
 
     const deudaReciente = await Deuda.create({
@@ -321,7 +322,7 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
       montoOriginal: 100,
       saldoPendiente: 100,
       fechaVencimiento: DateTime.now().plus({ days: 10 }),
-      estado: 'pendiente',
+      estado: EstadoDeuda.PENDIENTE,
     })
 
     const response = await client
@@ -346,11 +347,324 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
     await deudaReciente.refresh()
 
     assert.equal(Number(deudaAntigua.saldoPendiente), 0)
-    assert.equal(deudaAntigua.estado, 'liquidada')
+    assert.equal(deudaAntigua.estado, EstadoDeuda.LIQUIDADA)
     assert.equal(Number(deudaReciente.saldoPendiente), 70)
-    assert.equal(deudaReciente.estado, 'pendiente')
+    assert.equal(deudaReciente.estado, EstadoDeuda.PENDIENTE)
 
     const pagoRegistrado = await Pago.findOrFail(body.pagoId)
     assert.equal(pagoRegistrado.solicitudId, solicitud.id)
+  })
+
+  test('triggers RBAC protegen asignaciones y deudas sin contexto de sesión e impiden asignaciones activas duplicadas', async ({
+    assert,
+  }) => {
+    const sufijo = Date.now() + 3
+
+    const admin = await Usuario.create({
+      username: `admin_asig_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.ADMINISTRADOR,
+      estaActivo: true,
+    })
+
+    const generador = await Usuario.create({
+      username: `gen_asig_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.GENERADOR,
+      estaActivo: true,
+    })
+
+    const receptor = await Usuario.create({
+      username: `rec_asig_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.RECEPTOR,
+      estaActivo: true,
+    })
+
+    const persona = await Persona.create({
+      identificacion: `V-ASIG-${sufijo}`,
+      nombres: 'Elena',
+      apellidos: 'Bióloga',
+      estaActivo: true,
+    })
+
+    const proyecto = await Proyecto.create({
+      codigo: `PROY-ASIG-${sufijo}`,
+      nombre: 'Genómica Vegetal',
+      area: AreaProyecto.BIOLOGIA,
+      ambito: AmbitoProyecto.INTERNO,
+      estaActivo: true,
+    })
+
+    const grupoPago = await GrupoPago.create({
+      nombre: `Quincenal-ASIG-${sufijo}`,
+      periodicidad: PeriodicidadGrupoPago.QUINCENAL,
+      diaCorte1: 15,
+      diaCorte2: 30,
+      estaActivo: true,
+    })
+
+    // 1. Administrador intentando crear una Asignacion sin contexto de sesión
+    await assert.rejects(async () => {
+      await Asignacion.create({
+        personaId: persona.id,
+        proyectoId: proyecto.id,
+        grupoPagoId: grupoPago.id,
+        creadoPorId: admin.id,
+        montoPeriodo: 100,
+        fechaInicio: DateTime.now(),
+        estaActivo: true,
+      })
+    }, /Violación de Segregación de Funciones: El rol Administrador no tiene autorización para operar transacciones financieras/)
+
+    // 2. Receptor intentando figurar como creador de una Deuda o Asignacion
+    await assert.rejects(async () => {
+      await Deuda.create({
+        personaId: persona.id,
+        proyectoId: proyecto.id,
+        grupoPagoId: grupoPago.id,
+        creadoPorId: receptor.id,
+        montoOriginal: 100,
+        saldoPendiente: 100,
+        fechaVencimiento: DateTime.now().plus({ days: 15 }),
+        estado: EstadoDeuda.PENDIENTE,
+      })
+    }, /Violación RBAC: Solo un usuario con rol generador puede crear registros en deudas/)
+
+    // 3. Asignación activa válida creada por Generador y bloqueo de duplicado activo (uq_asignacion_activa)
+    await Asignacion.create({
+      personaId: persona.id,
+      proyectoId: proyecto.id,
+      grupoPagoId: grupoPago.id,
+      creadoPorId: generador.id,
+      montoPeriodo: 100,
+      fechaInicio: DateTime.now(),
+      estaActivo: true,
+    })
+
+    await assert.rejects(async () => {
+      await Asignacion.create({
+        personaId: persona.id,
+        proyectoId: proyecto.id,
+        grupoPagoId: grupoPago.id,
+        creadoPorId: generador.id,
+        montoPeriodo: 150,
+        fechaInicio: DateTime.now(),
+        estaActivo: true,
+      })
+    }, /uq_asignacion_activa/)
+  })
+
+  test('restricciones CHECK monetarias en PostgreSQL bloquean saldos negativos o inconsistentes', async ({
+    assert,
+  }) => {
+    const sufijo = Date.now() + 4
+
+    const generador = await Usuario.create({
+      username: `gen_chk_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.GENERADOR,
+      estaActivo: true,
+    })
+
+    const persona = await Persona.create({
+      identificacion: `V-CHK-${sufijo}`,
+      nombres: 'Luis',
+      apellidos: 'Químico',
+      estaActivo: true,
+    })
+
+    const proyecto = await Proyecto.create({
+      codigo: `PROY-CHK-${sufijo}`,
+      nombre: 'Catálisis',
+      area: AreaProyecto.QUIMICA,
+      ambito: AmbitoProyecto.EXTERNO,
+      estaActivo: true,
+    })
+
+    const grupoPago = await GrupoPago.create({
+      nombre: `Mensual-CHK-${sufijo}`,
+      periodicidad: PeriodicidadGrupoPago.MENSUAL,
+      diaCorte1: 30,
+      estaActivo: true,
+    })
+
+    // 1. Deuda con saldo_pendiente > monto_original debe fallar por chk_deudas_saldo
+    await assert.rejects(async () => {
+      await Deuda.create({
+        personaId: persona.id,
+        proyectoId: proyecto.id,
+        grupoPagoId: grupoPago.id,
+        creadoPorId: generador.id,
+        montoOriginal: 100,
+        saldoPendiente: 150,
+        fechaVencimiento: DateTime.now().plus({ days: 10 }),
+        estado: EstadoDeuda.PENDIENTE,
+      })
+    }, /chk_deudas_saldo/)
+
+    // 2. Caja chica con saldo_actual negativo debe fallar por chk_cajas_chicas_montos
+    await assert.rejects(async () => {
+      await CajaChica.create({
+        codigo: `CC-ERR-${sufijo}`,
+        nombre: 'Caja Inválida',
+        proyectoId: proyecto.id,
+        responsableId: generador.id,
+        anio: 2026,
+        mes: 11,
+        saldoInicial: 0,
+        montoAsignado: 100,
+        saldoActual: -10,
+        estado: EstadoCajaChica.ABIERTA,
+      })
+    }, /chk_cajas_chicas_montos/)
+  })
+
+  test('endpoint POST /api/v1/pagos valida integridad de solicitudId, rechaza sobrepagos y serializa pagos concurrentes', async ({
+    client,
+    assert,
+  }) => {
+    const sufijo = Date.now() + 5
+
+    const generador = await Usuario.create({
+      username: `gen_val_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.GENERADOR,
+      estaActivo: true,
+    })
+
+    const receptor = await Usuario.create({
+      username: `rec_val_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.RECEPTOR,
+      estaActivo: true,
+    })
+
+    const persona = await Persona.create({
+      identificacion: `V-VAL-${sufijo}`,
+      nombres: 'Ana',
+      apellidos: 'Investigadora',
+      estaActivo: true,
+    })
+
+    const proyectoA = await Proyecto.create({
+      codigo: `PROY-A-${sufijo}`,
+      nombre: 'Proyecto A',
+      area: AreaProyecto.FISICA,
+      ambito: AmbitoProyecto.INTERNO,
+      estaActivo: true,
+    })
+
+    const proyectoB = await Proyecto.create({
+      codigo: `PROY-B-${sufijo}`,
+      nombre: 'Proyecto B',
+      area: AreaProyecto.QUIMICA,
+      ambito: AmbitoProyecto.EXTERNO,
+      estaActivo: true,
+    })
+
+    const grupoPago = await GrupoPago.create({
+      nombre: `Mensual-VAL-${sufijo}`,
+      periodicidad: PeriodicidadGrupoPago.MENSUAL,
+      diaCorte1: 30,
+      estaActivo: true,
+    })
+
+    const solicitudOtroProyecto = await SolicitudPago.create({
+      codigo: `SOL-B-${sufijo}`,
+      proyectoId: proyectoB.id,
+      grupoPagoId: grupoPago.id,
+      periodoInicio: DateTime.now().minus({ days: 30 }),
+      periodoFin: DateTime.now(),
+      montoTotal: 100,
+      estado: EstadoSolicitud.APROBACION,
+      creadoPorId: generador.id,
+      revisadoPorId: receptor.id,
+    })
+
+    const solicitudProyectoA = await SolicitudPago.create({
+      codigo: `SOL-A-${sufijo}`,
+      proyectoId: proyectoA.id,
+      grupoPagoId: grupoPago.id,
+      periodoInicio: DateTime.now().minus({ days: 30 }),
+      periodoFin: DateTime.now(),
+      montoTotal: 100,
+      estado: EstadoSolicitud.APROBACION,
+      creadoPorId: generador.id,
+      revisadoPorId: receptor.id,
+    })
+
+    const deudaConcurrida = await Deuda.create({
+      personaId: persona.id,
+      proyectoId: proyectoA.id,
+      grupoPagoId: grupoPago.id,
+      solicitudId: solicitudProyectoA.id,
+      creadoPorId: generador.id,
+      montoOriginal: 100,
+      saldoPendiente: 100,
+      fechaVencimiento: DateTime.now().plus({ days: 5 }),
+      estado: EstadoDeuda.PENDIENTE,
+    })
+
+    // 1. Solicitud de otro proyecto es rechazada con 422 SOLICITUD_INVALIDA
+    const respSolicitudInvalida = await client.post('/api/v1/pagos').loginAs(receptor).json({
+      personaId: persona.id,
+      proyectoId: proyectoA.id,
+      solicitudId: solicitudOtroProyecto.id,
+      montoTotal: 50,
+      metodoPago: MetodoPago.TRANSFERENCIA,
+      fechaPago: '2026-11-13',
+    })
+
+    respSolicitudInvalida.assertStatus(422)
+    assert.equal(respSolicitudInvalida.body().codigo, 'SOLICITUD_INVALIDA')
+
+    // 2. Sobrepago es rechazado con 422 SOBREPAGO_NO_PERMITIDO
+    const respSobrepago = await client.post('/api/v1/pagos').loginAs(receptor).json({
+      personaId: persona.id,
+      proyectoId: proyectoA.id,
+      solicitudId: solicitudProyectoA.id,
+      montoTotal: 150,
+      metodoPago: MetodoPago.TRANSFERENCIA,
+      fechaPago: '2026-11-13',
+    })
+
+    respSobrepago.assertStatus(422)
+    assert.equal(respSobrepago.body().codigo, 'SOBREPAGO_NO_PERMITIDO')
+
+    // 3. Dos peticiones concurrentes de 80 USD sobre una deuda de 100 USD:
+    // El bloqueo pesimista FOR UPDATE garantiza que solo una tenga éxito (201) y la otra sea rechazada (422)
+    const [resp1, resp2] = await Promise.all([
+      client
+        .post('/api/v1/pagos')
+        .loginAs(receptor)
+        .json({
+          personaId: persona.id,
+          proyectoId: proyectoA.id,
+          solicitudId: solicitudProyectoA.id,
+          montoTotal: 80,
+          metodoPago: MetodoPago.PAGO_MOVIL,
+          numeroReferencia: `CONC-1-${sufijo}`,
+          fechaPago: '2026-11-13',
+        }),
+      client
+        .post('/api/v1/pagos')
+        .loginAs(receptor)
+        .json({
+          personaId: persona.id,
+          proyectoId: proyectoA.id,
+          solicitudId: solicitudProyectoA.id,
+          montoTotal: 80,
+          metodoPago: MetodoPago.PAGO_MOVIL,
+          numeroReferencia: `CONC-2-${sufijo}`,
+          fechaPago: '2026-11-13',
+        }),
+    ])
+
+    const codigosEstado = [resp1.status(), resp2.status()].sort()
+    assert.deepEqual(codigosEstado, [201, 422])
+
+    await deudaConcurrida.refresh()
+    assert.equal(Number(deudaConcurrida.saldoPendiente), 20)
   })
 })
