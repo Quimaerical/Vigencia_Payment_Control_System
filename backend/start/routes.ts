@@ -22,26 +22,24 @@ router
   .group(() => {
     router
       .group(() => {
-        router.post('registro', [UsuariosController, 'registro'])
-        router.post('signup', [UsuariosController, 'registro'])
-        router.post('login', [SesionesController, 'login'])
+        router.post('registro', [UsuariosController, 'registro']).as('auth.registro')
+        router.post('signup', [UsuariosController, 'registro']).as('auth.signup')
+        router.post('login', [SesionesController, 'login']).as('auth.login')
       })
       .prefix('auth')
-      .as('auth')
 
     router
       .group(() => {
-        router.get('perfil', [UsuariosController, 'perfil'])
-        router.get('profile', [UsuariosController, 'perfil'])
-        router.post('logout', [SesionesController, 'logout'])
+        router.get('perfil', [UsuariosController, 'perfil']).as('account.perfil')
+        router.get('profile', [UsuariosController, 'perfil']).as('account.profile')
+        router.post('logout', [SesionesController, 'logout']).as('account.logout')
       })
       .prefix('account')
-      .as('profile')
       .use(middleware.auth())
 
     router
       .group(() => {
-        router.post('pagos', [PagosController, 'procesarPago'])
+        router.post('pagos', [PagosController, 'procesarPago']).as('pagos.procesar')
       })
       .use(middleware.auth())
   })

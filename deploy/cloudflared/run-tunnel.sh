@@ -2,6 +2,8 @@
 # ==============================================================================
 # Script Auxiliar de Inicialización del Túnel de Cloudflare
 # Uso futuro: ./deploy/cloudflared/run-tunnel.sh [NOMBRE_O_UUID_DEL_TUNEL]
+# Autenticación: el token se lee de deploy/cloudflared/.env (CLOUDFLARE_TUNNEL_TOKEN).
+# Ese archivo es sensible: permisos 600 y nunca commitear (está en .gitignore).
 # ==============================================================================
 set -euo pipefail
 
@@ -41,9 +43,22 @@ if ! curl -s --connect-timeout 2 http://localhost:3333 >/dev/null 2>&1; then
   fi
 fi
 
+# 4. Cargar token del túnel desde el archivo de entorno local (no se versiona)
+ENV_FILE="${SCRIPT_DIR}/.env"
+if [ -f "$ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  set -a
+  . "$ENV_FILE"
+  set +a
+fi
+
 TUNNEL_IDENTIFIER="${1:-}"
 
-if [ -n "$TUNNEL_IDENTIFIER" ]; then
+# Ejecución: prioridad al token de Cloudflare si está disponible
+if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
+  echo "[+] Iniciando túnel autenticado con token de Cloudflare..."
+  exec cloudflared tunnel --config "$CONFIG_FILE" run --token "${CLOUDFLARE_TUNNEL_TOKEN}"
+elif [ -n "$TUNNEL_IDENTIFIER" ]; then
   echo "[+] Iniciando túnel identificado: '${TUNNEL_IDENTIFIER}'..."
   exec cloudflared tunnel --config "$CONFIG_FILE" run "$TUNNEL_IDENTIFIER"
 else

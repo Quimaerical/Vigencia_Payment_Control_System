@@ -6,7 +6,7 @@
 # Reemplaza /home/usuario/.cloudflared/<TUNNEL_ID>.json con la ruta absoluta a tu credencial
 
 tunnel: <TUNNEL_UUID>
-credentials-file: /home/sebastian/.cloudflared/<TUNNEL_UUID>.json
+credentials-file: /home/usuario/.cloudflared/<TUNNEL_ID>.json
 
 # Reglas de Ingress (de arriba hacia abajo)
 ingress:
