@@ -14,7 +14,7 @@ export default defineConfig({
 		tailwindcss(),
 		sveltekit({
 			adapter: adapter({
-				runtime: 'nodejs20.x'
+				runtime: 'nodejs22.x'
 			}),
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries.
