@@ -339,7 +339,11 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
       })
 
     response.assertStatus(201)
-    const body = response.body()
+    const body = response.body() as {
+      pagoId: number
+      montoAplicado: number
+      deudasAmortizadas: number
+    }
     assert.equal(body.montoAplicado, 80)
     assert.equal(body.deudasAmortizadas, 2)
 
@@ -617,7 +621,7 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
     })
 
     respSolicitudInvalida.assertStatus(422)
-    assert.equal(respSolicitudInvalida.body().codigo, 'SOLICITUD_INVALIDA')
+    assert.equal((respSolicitudInvalida.body() as { codigo: string }).codigo, 'SOLICITUD_INVALIDA')
 
     // 2. Sobrepago es rechazado con 422 SOBREPAGO_NO_PERMITIDO
     const respSobrepago = await client.post('/api/v1/pagos').loginAs(receptor).json({
@@ -630,7 +634,7 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
     })
 
     respSobrepago.assertStatus(422)
-    assert.equal(respSobrepago.body().codigo, 'SOBREPAGO_NO_PERMITIDO')
+    assert.equal((respSobrepago.body() as { codigo: string }).codigo, 'SOBREPAGO_NO_PERMITIDO')
 
     // 3. Dos peticiones concurrentes de 80 USD sobre una deuda de 100 USD:
     // El bloqueo pesimista FOR UPDATE garantiza que solo una tenga éxito (201) y la otra sea rechazada (422)

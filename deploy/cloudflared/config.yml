@@ -1,0 +1,31 @@
+# ==============================================================================
+# Cloudflare Tunnel Configuration (cloudflared)
+# Proyecto: Vigencia Payment Control System
+# ==============================================================================
+# Copia de deploy/cloudflared/config.yml.example con los valores del túnel:
+#     Túnel UUID: 42d8a096-afa7-41c2-938b-47877216e6b4
+#
+#     Este archivo contiene rutas locales
+#     Revisa las rutas antes de usarlo en otro entorno.
+#     El token de autenticación NO va aquí: se carga desde deploy/cloudflared/.env
+#     (archivo sensible, permisos 600, ignorado por Git).
+
+tunnel: 42d8a096-afa7-41c2-938b-47877216e6b4
+
+# credentials-file: /home/{name}/.cloudflared/42d8a096-afa7-41c2-938b-47877216e6b4.json
+#   ^ Solo necesario si te autenticas con archivo de credenciales en vez de --token.
+#     run-tunnel.sh y el servicio systemd usan CLOUDFLARE_TUNNEL_TOKEN (--token),
+#     por lo que esta línea puede quedarse comentada.
+
+# Reglas de Ingress (se evalúan de arriba hacia abajo)
+ingress:
+  #    Subdominio asignado para la API de AdonisJS que corre en localhost:3333
+  #    Subdominio configurado: api.VigenciaPCS.quimaerical-dev.win
+  - hostname: api.VigenciaPCS.quimaerical-dev.win
+    service: http://localhost:3333
+    originRequest:
+      noTLSVerify: false
+      connectTimeout: 30s
+
+  # 2. Regla Catch-All obligatoria por Cloudflare para tráfico no reconocido
+  - service: http_status:404

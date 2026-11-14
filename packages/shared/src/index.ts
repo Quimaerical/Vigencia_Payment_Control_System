@@ -37,7 +37,6 @@ export const EstadoPago = {
   ANULADO: 'anulado',
 } as const
 export type EstadoPago = (typeof EstadoPago)[keyof typeof EstadoPago]
-
 export const AreaProyecto = {
   FISICA: 'fisica',
   QUIMICA: 'quimica',
