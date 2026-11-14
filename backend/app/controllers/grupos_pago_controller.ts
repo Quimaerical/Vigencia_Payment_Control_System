@@ -68,7 +68,19 @@ export default class GruposPagoController {
         })
       }
 
-      if (payload.nombre !== undefined) grupo.nombre = payload.nombre
+      if (payload.nombre !== undefined) {
+        const nombreExistente = await GrupoPago.query({ client: trx })
+          .where('nombre', payload.nombre)
+          .whereNot('id', grupo.id)
+          .first()
+        if (nombreExistente) {
+          return response.status(422).json({
+            codigo: 'NOMBRE_DUPLICADO',
+            mensaje: 'Ya existe otro grupo de pago con ese nombre.',
+          })
+        }
+        grupo.nombre = payload.nombre
+      }
       if (payload.descripcion !== undefined) grupo.descripcion = payload.descripcion
       if (payload.periodicidad !== undefined) grupo.periodicidad = payload.periodicidad
       if (payload.diaCorte1 !== undefined) grupo.diaCorte1 = payload.diaCorte1

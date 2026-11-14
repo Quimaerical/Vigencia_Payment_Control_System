@@ -1,5 +1,11 @@
 import vine from '@vinejs/vine'
 
+const isoDateString = () =>
+  vine
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+
 /**
  * Validadores para Motor de Causación y Prorrateo
  */
@@ -12,11 +18,17 @@ export const simularProrrateoValidator = vine.create({
 export const generarCausacionLoteValidator = vine.create({
   proyectoId: vine.number().positive(),
   grupoPagoId: vine.number().positive().nullable().optional(),
-  periodoInicio: vine.string().trim(),
-  periodoFin: vine.string().trim(),
-  fechaVencimiento: vine.string().trim().optional(),
+  periodoInicio: isoDateString(),
+  periodoFin: isoDateString(),
+  fechaVencimiento: isoDateString().optional(),
   crearSolicitud: vine.boolean().optional(),
-  codigoSolicitud: vine.string().trim().minLength(3).maxLength(50).optional(),
+  codigoSolicitud: vine
+    .string()
+    .trim()
+    .minLength(3)
+    .maxLength(50)
+    .unique({ table: 'solicitudes_pago', column: 'codigo' })
+    .optional(),
 })
 
 export const anularRegistroValidator = vine.create({
@@ -35,8 +47,8 @@ export const crearSolicitudPagoValidator = vine.create({
     .unique({ table: 'solicitudes_pago', column: 'codigo' }),
   proyectoId: vine.number().positive(),
   grupoPagoId: vine.number().positive().nullable().optional(),
-  periodoInicio: vine.string().trim(),
-  periodoFin: vine.string().trim(),
+  periodoInicio: isoDateString(),
+  periodoFin: isoDateString(),
   deudaIds: vine.array(vine.number().positive()).optional(),
 })
 

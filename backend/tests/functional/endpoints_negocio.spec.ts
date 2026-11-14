@@ -315,11 +315,14 @@ test.group('Punto B — Endpoints de Catálogos, Causación, Solicitudes, Cajas 
     const cajaMes10Id = (respAbrirMes10.body() as { data: { id: number } }).data.id
 
     // 2. Solicitar un vale por $100.00
-    const respVale = await client.post(`/api/v1/cajas-chicas/${cajaMes10Id}/vales`).loginAs(generador).json({
-      solicitantePersonaId: personaId,
-      montoSolicitado: 100,
-      concepto: 'Compra de solventes de urgencia',
-    })
+    const respVale = await client
+      .post(`/api/v1/cajas-chicas/${cajaMes10Id}/vales`)
+      .loginAs(generador)
+      .json({
+        solicitantePersonaId: personaId,
+        montoSolicitado: 100,
+        concepto: 'Compra de solventes de urgencia',
+      })
     respVale.assertStatus(201)
     const valeId = (respVale.body() as { data: { id: number } }).data.id
 
@@ -341,10 +344,19 @@ test.group('Punto B — Endpoints de Catálogos, Causación, Solicitudes, Cajas 
     respDesembolsar.assertStatus(200)
     assert.equal((respDesembolsar.body() as { saldoCajaRestante: number }).saldoCajaRestante, 200)
 
-    // 4. Rendir el vale con comprobante por $85.00 (se reintegran $15.00 de vuelto -> Saldo en caja sube a $215.00)
-    const respRendir = await client
+    // 4. Rendir el vale con comprobante por $85.00 (solo Receptor; el Generador recibe 403)
+    const respRendirGen = await client
       .patch(`/api/v1/vales-caja/${valeId}/rendir`)
       .loginAs(generador)
+      .json({
+        montoRendido: 85,
+        comprobanteReferencia: `FACT-CC-${sufijo}`,
+      })
+    respRendirGen.assertStatus(403)
+
+    const respRendir = await client
+      .patch(`/api/v1/vales-caja/${valeId}/rendir`)
+      .loginAs(receptor)
       .json({
         montoRendido: 85,
         comprobanteReferencia: `FACT-CC-${sufijo}`,
@@ -389,5 +401,111 @@ test.group('Punto B — Endpoints de Catálogos, Causación, Solicitudes, Cajas 
     assert.equal(Number(cajaMes11.saldoInicial), 215)
     assert.equal(Number(cajaMes11.montoAsignado), 100)
     assert.equal(Number(cajaMes11.saldoActual), 315)
+  })
+
+  test('seguridad: sin registro público, tokens revocados al desactivar usuario, audit-logs solo admin y concurrencia en causación por lote', async ({
+    client,
+    assert,
+  }) => {
+    const sufijo = Date.now() + 20
+
+    // 1. Verificar que no existe registro público
+    const respRegPublico = await client.post('/api/v1/auth/registro').json({
+      username: `atacante_${sufijo}`,
+      password: 'PasswordSeguro123!',
+    })
+    respRegPublico.assertStatus(404)
+
+    const admin = await Usuario.create({
+      username: `admin_sec_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.ADMINISTRADOR,
+      estaActivo: true,
+    })
+
+    const generador = await Usuario.create({
+      username: `gen_sec_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.GENERADOR,
+      estaActivo: true,
+    })
+
+    // 2. Audit logs restringidos a Administrador (Generador recibe 403)
+    const respAuditGen = await client.get('/api/v1/audit-logs').loginAs(generador)
+    respAuditGen.assertStatus(403)
+
+    // 3. Concurrencia en causaciones/lote: dos peticiones simultáneas no deben duplicar causaciones
+    const respGrupo = await client
+      .post('/api/v1/grupos-pago')
+      .loginAs(admin)
+      .json({
+        nombre: `Conc-Grupo-${sufijo}`,
+        periodicidad: PeriodicidadGrupoPago.MENSUAL,
+        diaCorte1: 30,
+      })
+    const grupoPagoId = (respGrupo.body() as { data: { id: number } }).data.id
+
+    const respPersona = await client
+      .post('/api/v1/personas')
+      .loginAs(generador)
+      .json({
+        identificacion: `V-CONC-${sufijo}`,
+        nombres: 'Lucía',
+        apellidos: 'Física',
+      })
+    const personaId = (respPersona.body() as { data: { id: number } }).data.id
+
+    const respProyecto = await client
+      .post('/api/v1/proyectos')
+      .loginAs(generador)
+      .json({
+        codigo: `PROY-CONC-${sufijo}`,
+        nombre: 'Física Nuclear',
+        area: AreaProyecto.FISICA,
+        ambito: AmbitoProyecto.INTERNO,
+      })
+    const proyectoId = (respProyecto.body() as { data: { id: number } }).data.id
+
+    await client.post('/api/v1/asignaciones').loginAs(generador).json({
+      personaId,
+      proyectoId,
+      grupoPagoId,
+      montoPeriodo: 500,
+      fechaInicio: '2026-11-01',
+    })
+
+    const [lote1, lote2] = await Promise.all([
+      client.post('/api/v1/causaciones/lote').loginAs(generador).json({
+        proyectoId,
+        grupoPagoId,
+        periodoInicio: '2026-11-01',
+        periodoFin: '2026-11-30',
+      }),
+      client.post('/api/v1/causaciones/lote').loginAs(generador).json({
+        proyectoId,
+        grupoPagoId,
+        periodoInicio: '2026-11-01',
+        periodoFin: '2026-11-30',
+      }),
+    ])
+
+    const statuses = [lote1.status(), lote2.status()].sort()
+    assert.deepEqual(statuses, [201, 422])
+
+    // 4. Desactivar usuario revoca sus tokens activos
+    const tokenGen = await Usuario.accessTokens.create(generador)
+    const bearer = tokenGen.value!.release()
+
+    const respAntes = await client.get('/api/v1/proyectos').bearerToken(bearer)
+    respAntes.assertStatus(200)
+
+    const respDesactivar = await client
+      .patch(`/api/v1/usuarios/${generador.id}/estado`)
+      .loginAs(admin)
+      .json({ estaActivo: false })
+    respDesactivar.assertStatus(200)
+
+    const respDespues = await client.get('/api/v1/proyectos').bearerToken(bearer)
+    respDespues.assertStatus(401)
   })
 })

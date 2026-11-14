@@ -9,6 +9,7 @@ import ValeCaja from '#models/vale_caja'
 import SolicitudPago from '#models/solicitud_pago'
 import AuditLog from '#models/audit_log'
 import { generarReciboPagoPdf, generarSolicitudConsolidadaPdf } from '#services/pdf_service'
+import { esAdministrador } from '#abilities/main'
 
 export default class ReportesController {
   /**
@@ -110,14 +111,16 @@ export default class ReportesController {
   }
 
   /**
-   * Consulta el log de auditoría forense (audit_logs) con trazabilidad de quién, cuándo y qué cambió
+   * Consulta el log de auditoría forense (audit_logs) con trazabilidad de quién, cuándo y qué cambió (rol 'administrador')
    */
-  async auditLogs({ auth, request, response }: HttpContext) {
+  async auditLogs({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(esAdministrador)
+
     const tablaAfectada = request.input('tablaAfectada')
     const accion = request.input('accion')
     const usuarioId = request.input('usuarioId')
-    const limite = Math.min(Number(request.input('limite', 100)) || 100, 500)
+    const limite = Math.max(1, Math.min(Number(request.input('limite', 100)) || 100, 500))
 
     const query = AuditLog.query().preload('usuario').orderBy('id', 'desc').limit(limite)
 

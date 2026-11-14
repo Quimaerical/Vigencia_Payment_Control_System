@@ -353,7 +353,7 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
     assert.equal(Number(deudaAntigua.saldoPendiente), 0)
     assert.equal(deudaAntigua.estado, EstadoDeuda.LIQUIDADA)
     assert.equal(Number(deudaReciente.saldoPendiente), 70)
-    assert.equal(deudaReciente.estado, EstadoDeuda.PENDIENTE)
+    assert.equal(deudaReciente.estado, EstadoDeuda.ABONADO)
 
     const pagoRegistrado = await Pago.findOrFail(body.pagoId)
     assert.equal(pagoRegistrado.solicitudId, solicitud.id)

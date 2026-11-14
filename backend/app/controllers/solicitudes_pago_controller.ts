@@ -78,9 +78,7 @@ export default class SolicitudesPagoController {
     }
 
     return await ejecutarTransaccionFinanciera({ auth, request }, async (trx) => {
-      const proyecto = await Proyecto.query({ client: trx })
-        .where('id', payload.proyectoId)
-        .first()
+      const proyecto = await Proyecto.query({ client: trx }).where('id', payload.proyectoId).first()
 
       if (!proyecto || !proyecto.estaActivo) {
         return response.status(422).json({
@@ -105,6 +103,20 @@ export default class SolicitudesPagoController {
       }
 
       const deudasParaAgrupar = await deudasQuery
+
+      if (payload.deudaIds && payload.deudaIds.length > 0) {
+        const idsUnicos = [...new Set(payload.deudaIds)]
+        if (deudasParaAgrupar.length !== idsUnicos.length) {
+          const encontrados = new Set(deudasParaAgrupar.map((d) => d.id))
+          const noElegibles = idsUnicos.filter((id) => !encontrados.has(id))
+          return response.status(422).json({
+            codigo: 'DEUDAS_NO_ELEGIBLES',
+            mensaje:
+              'Una o más causaciones indicadas no existen, pertenecen a otro proyecto/grupo o ya están asociadas a una solicitud.',
+            deudaIdsNoElegibles: noElegibles,
+          })
+        }
+      }
 
       if (deudasParaAgrupar.length === 0) {
         return response.status(422).json({
@@ -295,7 +307,9 @@ export default class SolicitudesPagoController {
         })
       }
 
-      if (![EstadoSolicitud.APROBACION, EstadoSolicitud.ENTREGA].includes(solicitud.estado as any)) {
+      if (
+        ![EstadoSolicitud.APROBACION, EstadoSolicitud.ENTREGA].includes(solicitud.estado as any)
+      ) {
         return response.status(422).json({
           codigo: 'TRANSICION_ESTADO_INVALIDA',
           mensaje: `La solicitud debe estar en estado 'aprobacion' o 'entrega' para poder cerrarse (estado actual: '${solicitud.estado}').`,

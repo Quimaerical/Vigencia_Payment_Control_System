@@ -68,7 +68,21 @@ export default class PersonasController {
 
       if (payload.nombres !== undefined) persona.nombres = payload.nombres
       if (payload.apellidos !== undefined) persona.apellidos = payload.apellidos
-      if (payload.correo !== undefined) persona.correo = payload.correo
+      if (payload.correo !== undefined) {
+        if (payload.correo) {
+          const correoExistente = await Persona.query({ client: trx })
+            .where('correo', payload.correo)
+            .whereNot('id', persona.id)
+            .first()
+          if (correoExistente) {
+            return response.status(422).json({
+              codigo: 'CORREO_DUPLICADO',
+              mensaje: 'Ya existe otro beneficiario registrado con ese correo electrónico.',
+            })
+          }
+        }
+        persona.correo = payload.correo
+      }
       if (payload.estaActivo !== undefined) persona.estaActivo = payload.estaActivo
 
       persona.useTransaction(trx)

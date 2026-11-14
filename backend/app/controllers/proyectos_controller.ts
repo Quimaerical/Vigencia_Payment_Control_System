@@ -38,6 +38,13 @@ export default class ProyectosController {
     const fechaInicio = payload.fechaInicio ? DateTime.fromISO(payload.fechaInicio) : null
     const fechaFin = payload.fechaFin ? DateTime.fromISO(payload.fechaFin) : null
 
+    if ((fechaInicio && !fechaInicio.isValid) || (fechaFin && !fechaFin.isValid)) {
+      return response.status(422).json({
+        codigo: 'FECHA_INVALIDA',
+        mensaje: 'Las fechas de vigencia del proyecto deben tener formato ISO válido (YYYY-MM-DD).',
+      })
+    }
+
     if (fechaInicio && fechaFin && fechaFin < fechaInicio) {
       return response.status(422).json({
         codigo: 'VIGENCIA_INVALIDA',
@@ -88,10 +95,24 @@ export default class ProyectosController {
       if (payload.area !== undefined) proyecto.area = payload.area
       if (payload.ambito !== undefined) proyecto.ambito = payload.ambito
       if (payload.fechaInicio !== undefined) {
-        proyecto.fechaInicio = payload.fechaInicio ? DateTime.fromISO(payload.fechaInicio) : null
+        const nuevaInicio = payload.fechaInicio ? DateTime.fromISO(payload.fechaInicio) : null
+        if (nuevaInicio && !nuevaInicio.isValid) {
+          return response.status(422).json({
+            codigo: 'FECHA_INVALIDA',
+            mensaje: 'La fecha de inicio debe tener formato ISO válido (YYYY-MM-DD).',
+          })
+        }
+        proyecto.fechaInicio = nuevaInicio
       }
       if (payload.fechaFin !== undefined) {
-        proyecto.fechaFin = payload.fechaFin ? DateTime.fromISO(payload.fechaFin) : null
+        const nuevaFin = payload.fechaFin ? DateTime.fromISO(payload.fechaFin) : null
+        if (nuevaFin && !nuevaFin.isValid) {
+          return response.status(422).json({
+            codigo: 'FECHA_INVALIDA',
+            mensaje: 'La fecha de fin debe tener formato ISO válido (YYYY-MM-DD).',
+          })
+        }
+        proyecto.fechaFin = nuevaFin
       }
       if (payload.estaActivo !== undefined) proyecto.estaActivo = payload.estaActivo
 

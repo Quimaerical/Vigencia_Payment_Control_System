@@ -118,9 +118,7 @@ export default class CausacionesController {
     const diasPeriodo = Math.floor(pFin.diff(pInicio, 'days').days) + 1
 
     return await ejecutarTransaccionFinanciera({ auth, request }, async (trx) => {
-      const proyecto = await Proyecto.query({ client: trx })
-        .where('id', payload.proyectoId)
-        .first()
+      const proyecto = await Proyecto.query({ client: trx }).where('id', payload.proyectoId).first()
 
       if (!proyecto || !proyecto.estaActivo) {
         return response.status(422).json({
@@ -130,8 +128,10 @@ export default class CausacionesController {
       }
 
       const asignacionesQuery = Asignacion.query({ client: trx })
+        .forUpdate()
         .where('proyecto_id', payload.proyectoId)
         .where('esta_activo', true)
+        .orderBy('id', 'asc')
 
       if (payload.grupoPagoId) {
         asignacionesQuery.where('grupo_pago_id', payload.grupoPagoId)
@@ -293,30 +293,49 @@ export default class CausacionesController {
 
       const solicitudIdAnterior = deuda.solicitudId
 
-      deuda.estado = EstadoDeuda.ANULADA
-      deuda.saldoPendiente = 0
-      deuda.solicitudId = null
-      deuda.motivoAnulacion = motivoAnulacion
-      deuda.anuladoPorId = usuario.id
-      deuda.fechaAnulacion = DateTime.now()
-      deuda.useTransaction(trx)
-      await deuda.save()
-
       if (solicitudIdAnterior) {
         const solicitud = await SolicitudPago.query({ client: trx })
+          .forUpdate()
           .where('id', solicitudIdAnterior)
           .first()
 
         if (
           solicitud &&
-          [EstadoSolicitud.CREACION, EstadoSolicitud.ENVIO].includes(solicitud.estado as any)
+          [EstadoSolicitud.APROBACION, EstadoSolicitud.ENTREGA, EstadoSolicitud.CIERRE].includes(
+            solicitud.estado as any
+          )
         ) {
+          return response.status(422).json({
+            codigo: 'SOLICITUD_YA_APROBADA_O_CERRADA',
+            mensaje:
+              'No se puede anular una causación vinculada a una solicitud aprobada, en entrega o cerrada.',
+          })
+        }
+
+        deuda.estado = EstadoDeuda.ANULADA
+        deuda.saldoPendiente = 0
+        deuda.solicitudId = null
+        deuda.motivoAnulacion = motivoAnulacion
+        deuda.anuladoPorId = usuario.id
+        deuda.fechaAnulacion = DateTime.now()
+        deuda.useTransaction(trx)
+        await deuda.save()
+
+        if (solicitud) {
           solicitud.montoTotal = Number(
             Math.max(0, Number(solicitud.montoTotal) - Number(deuda.montoOriginal)).toFixed(2)
           )
           solicitud.useTransaction(trx)
           await solicitud.save()
         }
+      } else {
+        deuda.estado = EstadoDeuda.ANULADA
+        deuda.saldoPendiente = 0
+        deuda.motivoAnulacion = motivoAnulacion
+        deuda.anuladoPorId = usuario.id
+        deuda.fechaAnulacion = DateTime.now()
+        deuda.useTransaction(trx)
+        await deuda.save()
       }
 
       return response.status(200).json({

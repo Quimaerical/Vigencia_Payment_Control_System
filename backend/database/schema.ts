@@ -462,6 +462,7 @@ export class SolicitudesPagoSchema extends BaseModel {
   @column()
   declare revisadoPorId: number | null
 }
+
 export class UserSchema extends BaseModel {
   static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'updatedAt'] as const
   $columns = UserSchema.$columns

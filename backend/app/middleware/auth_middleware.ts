@@ -1,14 +1,13 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import type { Authenticators } from '@adonisjs/auth/types'
-import db from '@adonisjs/lucid/services/db'
 
 /**
  * Auth middleware is used authenticate HTTP requests and deny
- * access to unauthenticated users.
- * Además propaga el usuario autenticado y la IP al contexto de sesión
- * de PostgreSQL para que los triggers RBAC y de auditoría forense
- * dispongan siempre de trazabilidad de sesión en todas las rutas protegidas.
+ * access to unauthenticated or deactivated users.
+ * El contexto de sesión PostgreSQL (`app.current_user_id`, `app.current_ip`)
+ * se propaga exclusivamente mediante `set_config(..., true)` (is_local = true)
+ * dentro de cada transacción ACID en `ejecutarTransaccionFinanciera()`.
  */
 export default class AuthMiddleware {
   async handle(
@@ -19,20 +18,14 @@ export default class AuthMiddleware {
     } = {}
   ) {
     const usuario = await ctx.auth.authenticateUsing(options.guards)
-    const esPostgres = db.connection().dialect.name === 'postgres'
 
-    if (esPostgres && usuario) {
-      await db.rawQuery(`SELECT set_config('app.current_user_id', ?, false)`, [String(usuario.id)])
-      await db.rawQuery(`SELECT set_config('app.current_ip', ?, false)`, [ctx.request.ip()])
+    if (!usuario.estaActivo) {
+      return ctx.response.status(403).json({
+        codigo: 'USUARIO_INACTIVO',
+        mensaje: 'La cuenta de usuario se encuentra desactivada por el Administrador del Sistema.',
+      })
     }
 
-    try {
-      return await next()
-    } finally {
-      if (esPostgres && usuario) {
-        await db.rawQuery(`SELECT set_config('app.current_user_id', '', false)`)
-        await db.rawQuery(`SELECT set_config('app.current_ip', '', false)`)
-      }
-    }
+    return next()
   }
 }

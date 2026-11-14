@@ -30,8 +30,6 @@ router
   .group(() => {
     router
       .group(() => {
-        router.post('registro', [UsuariosController, 'registro']).as('auth.registro')
-        router.post('signup', [UsuariosController, 'registro']).as('auth.signup')
         router.post('login', [SesionesController, 'login']).as('auth.login')
       })
       .prefix('auth')
@@ -129,7 +127,9 @@ router
 
         // 2.4 Control de Cajas Chicas y Vales
         router.get('cajas-chicas', [CajasChicasController, 'listar']).as('cajas_chicas.listar')
-        router.get('cajas-chicas/:id', [CajasChicasController, 'mostrar']).as('cajas_chicas.mostrar')
+        router
+          .get('cajas-chicas/:id', [CajasChicasController, 'mostrar'])
+          .as('cajas_chicas.mostrar')
         router.post('cajas-chicas', [CajasChicasController, 'abrir']).as('cajas_chicas.abrir')
         router
           .patch('cajas-chicas/:id/cerrar', [CajasChicasController, 'cerrar'])

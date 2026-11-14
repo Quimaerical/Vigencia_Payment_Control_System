@@ -1,6 +1,12 @@
 import vine from '@vinejs/vine'
 import { AreaProyecto, AmbitoProyecto, PeriodicidadGrupoPago } from '@app/shared'
 
+const isoDateString = () =>
+  vine
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+
 /**
  * Validadores para Personas (Beneficiarios sin usuario en el sistema)
  */
@@ -45,8 +51,8 @@ export const crearProyectoValidator = vine.create({
   descripcion: vine.string().trim().maxLength(1000).nullable().optional(),
   area: vine.enum(Object.values(AreaProyecto)),
   ambito: vine.enum(Object.values(AmbitoProyecto)),
-  fechaInicio: vine.string().trim().nullable().optional(),
-  fechaFin: vine.string().trim().nullable().optional(),
+  fechaInicio: isoDateString().nullable().optional(),
+  fechaFin: isoDateString().nullable().optional(),
   estaActivo: vine.boolean().optional(),
 })
 
@@ -55,8 +61,8 @@ export const actualizarProyectoValidator = vine.create({
   descripcion: vine.string().trim().maxLength(1000).nullable().optional(),
   area: vine.enum(Object.values(AreaProyecto)).optional(),
   ambito: vine.enum(Object.values(AmbitoProyecto)).optional(),
-  fechaInicio: vine.string().trim().nullable().optional(),
-  fechaFin: vine.string().trim().nullable().optional(),
+  fechaInicio: isoDateString().nullable().optional(),
+  fechaFin: isoDateString().nullable().optional(),
   estaActivo: vine.boolean().optional(),
 })
 
@@ -96,14 +102,14 @@ export const crearAsignacionValidator = vine.create({
   proyectoId: vine.number().positive(),
   grupoPagoId: vine.number().positive(),
   montoPeriodo: vine.number().positive().min(0.01),
-  fechaInicio: vine.string().trim(),
-  fechaFin: vine.string().trim().nullable().optional(),
+  fechaInicio: isoDateString(),
+  fechaFin: isoDateString().nullable().optional(),
   estaActivo: vine.boolean().optional(),
 })
 
 export const actualizarAsignacionValidator = vine.create({
   montoPeriodo: vine.number().positive().min(0.01).optional(),
-  fechaInicio: vine.string().trim().optional(),
-  fechaFin: vine.string().trim().nullable().optional(),
+  fechaInicio: isoDateString().optional(),
+  fechaFin: isoDateString().nullable().optional(),
   estaActivo: vine.boolean().optional(),
 })

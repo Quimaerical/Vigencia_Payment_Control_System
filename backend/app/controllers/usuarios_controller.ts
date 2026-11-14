@@ -1,36 +1,11 @@
 import Usuario from '#models/usuario'
-import {
-  signupValidator,
-  crearUsuarioAdminValidator,
-  cambiarEstadoActivoValidator,
-} from '#validators/usuario'
+import { crearUsuarioAdminValidator, cambiarEstadoActivoValidator } from '#validators/usuario'
 import type { HttpContext } from '@adonisjs/core/http'
 import UsuarioTransformer from '#transformers/usuario_transformer'
-import { RolUsuario } from '@app/shared'
 import { esAdministrador } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
 
 export default class UsuariosController {
-  /**
-   * Registro público de nuevos usuarios asignando de forma segura el rol 'generador'
-   */
-  async registro({ request, serialize }: HttpContext) {
-    const { username, password } = await request.validateUsing(signupValidator)
-
-    const user = await Usuario.create({
-      username,
-      passwordHash: password,
-      rol: RolUsuario.GENERADOR,
-      estaActivo: true,
-    })
-    const token = await Usuario.accessTokens.create(user)
-
-    return serialize({
-      user: UsuarioTransformer.transform(user),
-      token: token.value!.release(),
-    })
-  }
-
   /**
    * Retorna los datos del perfil del usuario autenticado actual
    */
@@ -75,7 +50,7 @@ export default class UsuariosController {
   }
 
   /**
-   * Activa o desactiva lógicamente a un usuario (baja lógica que preserva audit_logs)
+   * Activa o desactiva lógicamente a un usuario y revoca sus tokens activos al desactivar
    */
   async cambiarEstado({ auth, bouncer, params, request, response }: HttpContext) {
     auth.getUserOrFail()
@@ -95,6 +70,10 @@ export default class UsuariosController {
       usuario.estaActivo = estaActivo
       usuario.useTransaction(trx)
       await usuario.save()
+
+      if (!estaActivo) {
+        await trx.from('auth_access_tokens').where('tokenable_id', usuario.id).delete()
+      }
 
       return response.status(200).json({
         mensaje: `Usuario ${estaActivo ? 'activado' : 'desactivado'} exitosamente`,

@@ -74,9 +74,7 @@ export default class CajasChicasController {
     const payload = await request.validateUsing(abrirCajaChicaValidator)
 
     return await ejecutarTransaccionFinanciera({ auth, request }, async (trx) => {
-      const proyecto = await Proyecto.query({ client: trx })
-        .where('id', payload.proyectoId)
-        .first()
+      const proyecto = await Proyecto.query({ client: trx }).where('id', payload.proyectoId).first()
 
       if (!proyecto || !proyecto.estaActivo) {
         return response.status(422).json({
@@ -416,11 +414,11 @@ export default class CajasChicasController {
   }
 
   /**
-   * Registra la rendición de cuentas de un vale con comprobante y ajusta el saldo de la caja chica
+   * Registra la rendición de cuentas de un vale con comprobante y ajusta el saldo de la caja chica (rol 'receptor')
    */
   async rendirVale({ auth, bouncer, params, request, response }: HttpContext) {
     auth.getUserOrFail()
-    await bouncer.authorize(operarFinanzasNoAdmin)
+    await bouncer.authorize(esReceptor)
 
     const { montoRendido, comprobanteReferencia } =
       await request.validateUsing(rendirValeCajaValidator)
@@ -445,13 +443,24 @@ export default class CajasChicasController {
         })
       }
 
+      const montoSolicitado = Number(Number(vale.montoSolicitado).toFixed(2))
+      const montoRendidoRedondeado = Number(Number(montoRendido).toFixed(2))
+
+      if (montoRendidoRedondeado > montoSolicitado) {
+        return response.status(422).json({
+          codigo: 'MONTO_RENDIDO_EXCEDE_VALE',
+          mensaje:
+            'El monto rendido no puede superar el monto desembolsado en el vale. Gestione un vale adicional por la diferencia.',
+          montoSolicitado,
+          montoRendido: montoRendidoRedondeado,
+        })
+      }
+
       const caja = await CajaChica.query({ client: trx })
         .forUpdate()
         .where('id', vale.cajaChicaId)
         .firstOrFail()
 
-      const montoSolicitado = Number(Number(vale.montoSolicitado).toFixed(2))
-      const montoRendidoRedondeado = Number(Number(montoRendido).toFixed(2))
       const diferenciaVuelto = Number((montoSolicitado - montoRendidoRedondeado).toFixed(2))
       const nuevoSaldoCaja = Number((Number(caja.saldoActual) + diferenciaVuelto).toFixed(2))
 
@@ -482,11 +491,11 @@ export default class CajasChicasController {
   }
 
   /**
-   * Anula justificadamente un vale de caja chica y reintegra el monto al saldo_actual si aplica
+   * Anula justificadamente un vale de caja chica y reintegra el monto al saldo_actual si aplica (rol 'receptor')
    */
   async anularVale({ auth, bouncer, params, request, response }: HttpContext) {
     const usuario = auth.getUserOrFail()
-    await bouncer.authorize(operarFinanzasNoAdmin)
+    await bouncer.authorize(esReceptor)
 
     const { motivoAnulacion } = await request.validateUsing(anularRegistroValidator)
 

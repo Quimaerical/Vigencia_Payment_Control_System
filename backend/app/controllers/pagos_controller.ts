@@ -178,6 +178,8 @@ export default class PagosController {
           deuda.saldoPendiente = nuevoSaldo
           if (nuevoSaldo === 0) {
             deuda.estado = EstadoDeuda.LIQUIDADA
+          } else if (nuevoSaldo < Number(deuda.montoOriginal)) {
+            deuda.estado = EstadoDeuda.ABONADO
           }
           deuda.useTransaction(trx)
           await deuda.save()
@@ -202,13 +204,32 @@ export default class PagosController {
           montoRestante = Number((montoRestante - montoAAplicar).toFixed(2))
         }
 
+        let solicitudPasoAEntrega = false
         if (solicitudAsociada && solicitudAsociada.estado === EstadoSolicitud.APROBACION) {
           solicitudAsociada.estado = EstadoSolicitud.ENTREGA
           solicitudAsociada.useTransaction(trx)
           await solicitudAsociada.save()
+          solicitudPasoAEntrega = true
         }
 
         // 3.5 Trazabilidad Forense Completa en audit_logs
+        if (solicitudPasoAEntrega && solicitudAsociada) {
+          const auditSolicitud = new AuditLog()
+          auditSolicitud.accion = 'SOLICITUD_EN_ENTREGA'
+          auditSolicitud.tablaAfectada = 'solicitudes_pago'
+          auditSolicitud.registroId = solicitudAsociada.id
+          auditSolicitud.usuarioId = usuario.id
+          auditSolicitud.direccionIp = request.ip()
+          auditSolicitud.datosAnteriores = {
+            estado: EstadoSolicitud.APROBACION,
+          }
+          auditSolicitud.datosNuevos = {
+            estado: EstadoSolicitud.ENTREGA,
+            pagoId: pago.id,
+          }
+          auditSolicitud.useTransaction(trx)
+          await auditSolicitud.save()
+        }
         const auditPago = new AuditLog()
         auditPago.accion = 'CREAR_PAGO'
         auditPago.tablaAfectada = 'pagos'
@@ -339,7 +360,8 @@ export default class PagosController {
           )
 
           deuda.saldoPendiente = nuevoSaldo
-          deuda.estado = EstadoDeuda.PENDIENTE
+          deuda.estado =
+            nuevoSaldo < Number(deuda.montoOriginal) ? EstadoDeuda.ABONADO : EstadoDeuda.PENDIENTE
           deuda.useTransaction(trx)
           await deuda.save()
 

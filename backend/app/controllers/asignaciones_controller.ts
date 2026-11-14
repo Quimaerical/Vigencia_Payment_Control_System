@@ -132,10 +132,24 @@ export default class AsignacionesController {
         asignacion.montoPeriodo = Number(payload.montoPeriodo.toFixed(2))
       }
       if (payload.fechaInicio !== undefined) {
-        asignacion.fechaInicio = DateTime.fromISO(payload.fechaInicio)
+        const nuevaInicio = DateTime.fromISO(payload.fechaInicio)
+        if (!nuevaInicio.isValid) {
+          return response.status(422).json({
+            codigo: 'FECHA_INVALIDA',
+            mensaje: 'La fecha de inicio debe tener formato ISO válido (YYYY-MM-DD).',
+          })
+        }
+        asignacion.fechaInicio = nuevaInicio
       }
       if (payload.fechaFin !== undefined) {
-        asignacion.fechaFin = payload.fechaFin ? DateTime.fromISO(payload.fechaFin) : null
+        const nuevaFin = payload.fechaFin ? DateTime.fromISO(payload.fechaFin) : null
+        if (nuevaFin && !nuevaFin.isValid) {
+          return response.status(422).json({
+            codigo: 'FECHA_INVALIDA',
+            mensaje: 'La fecha de fin debe tener formato ISO válido (YYYY-MM-DD).',
+          })
+        }
+        asignacion.fechaFin = nuevaFin
       }
       if (payload.estaActivo !== undefined) {
         asignacion.estaActivo = payload.estaActivo
