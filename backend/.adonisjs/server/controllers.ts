@@ -4,7 +4,15 @@
  */
 
 export const controllers = {
+  Asignaciones: () => import('#controllers/asignaciones_controller'),
+  CajasChicas: () => import('#controllers/cajas_chicas_controller'),
+  Causaciones: () => import('#controllers/causaciones_controller'),
+  GruposPago: () => import('#controllers/grupos_pago_controller'),
   Pagos: () => import('#controllers/pagos_controller'),
+  Personas: () => import('#controllers/personas_controller'),
+  Proyectos: () => import('#controllers/proyectos_controller'),
+  Reportes: () => import('#controllers/reportes_controller'),
   Sesiones: () => import('#controllers/sesiones_controller'),
+  SolicitudesPago: () => import('#controllers/solicitudes_pago_controller'),
   Usuarios: () => import('#controllers/usuarios_controller'),
 }

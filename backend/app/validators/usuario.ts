@@ -1,4 +1,5 @@
 import vine from '@vinejs/vine'
+import { RolUsuario } from '@app/shared'
 
 /**
  * Shared rules for username and password.
@@ -13,6 +14,23 @@ export const signupValidator = vine.create({
   username: username().unique({ table: 'usuarios', column: 'username' }),
   password: password(),
   passwordConfirmation: password().sameAs('password').optional(),
+})
+
+/**
+ * Validator for Administrator creating system users with explicit role
+ */
+export const crearUsuarioAdminValidator = vine.create({
+  username: username().unique({ table: 'usuarios', column: 'username' }),
+  password: password(),
+  rol: vine.enum(Object.values(RolUsuario)),
+  estaActivo: vine.boolean().optional(),
+})
+
+/**
+ * Validator for toggling active status on catalog/user records
+ */
+export const cambiarEstadoActivoValidator = vine.create({
+  estaActivo: vine.boolean(),
 })
 
 /**

@@ -1,15 +1,40 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 import { EstadoDeuda, EstadoPago, EstadoSolicitud } from '@app/shared'
 import Pago from '#models/pago'
 import Deuda from '#models/deuda'
 import Prorrateo from '#models/prorrateo'
 import SolicitudPago from '#models/solicitud_pago'
 import AuditLog from '#models/audit_log'
-import { procesarPagoValidator } from '#validators/pago'
+import { procesarPagoValidator, anularPagoValidator } from '#validators/pago'
 import { registrarPago } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
 
 export default class PagosController {
+  /**
+   * Lista los pagos registrados con sus relaciones de persona, usuario, solicitud y prorrateos
+   */
+  public async listar({ auth, request, response }: HttpContext) {
+    auth.getUserOrFail()
+    const personaId = request.input('personaId')
+    const solicitudId = request.input('solicitudId')
+    const estado = request.input('estado')
+
+    const query = Pago.query()
+      .preload('persona')
+      .preload('usuario')
+      .preload('solicitudPago')
+      .preload('prorrateos', (q) => q.preload('deuda'))
+      .orderBy('id', 'desc')
+
+    if (personaId) query.where('persona_id', Number(personaId))
+    if (solicitudId) query.where('solicitud_id', Number(solicitudId))
+    if (estado) query.where('estado', String(estado))
+
+    const pagos = await query
+    return response.status(200).json({ data: pagos })
+  }
+
   /**
    * Procesa la amortización y registro de pagos mediante el algoritmo FIFO (First In, First Out).
    *
@@ -59,14 +84,16 @@ export default class PagosController {
       { auth, request },
       async (trx) => {
         // 3.0 Validar pertenencia, proyecto y estado de solicitudId si fue informado
+        let solicitudAsociada: SolicitudPago | null = null
         if (solicitudId) {
-          const solicitud = await SolicitudPago.query({ client: trx })
+          solicitudAsociada = await SolicitudPago.query({ client: trx })
+            .forUpdate()
             .where('id', Number(solicitudId))
             .where('proyecto_id', Number(proyectoId))
             .whereIn('estado', [EstadoSolicitud.APROBACION, EstadoSolicitud.ENTREGA])
             .first()
 
-          if (!solicitud) {
+          if (!solicitudAsociada) {
             return response.status(422).json({
               codigo: 'SOLICITUD_INVALIDA',
               mensaje:
@@ -175,8 +202,13 @@ export default class PagosController {
           montoRestante = Number((montoRestante - montoAAplicar).toFixed(2))
         }
 
+        if (solicitudAsociada && solicitudAsociada.estado === EstadoSolicitud.APROBACION) {
+          solicitudAsociada.estado = EstadoSolicitud.ENTREGA
+          solicitudAsociada.useTransaction(trx)
+          await solicitudAsociada.save()
+        }
+
         // 3.5 Trazabilidad Forense Completa en audit_logs
-        // Auditoría del registro de Pago
         const auditPago = new AuditLog()
         auditPago.accion = 'CREAR_PAGO'
         auditPago.tablaAfectada = 'pagos'
@@ -198,7 +230,6 @@ export default class PagosController {
         auditPago.useTransaction(trx)
         await auditPago.save()
 
-        // Auditoría forense de cada Deuda amortizada y su Prorrateo asociado
         for (const item of amortizaciones) {
           const auditDeuda = new AuditLog()
           auditDeuda.accion = 'AMORTIZAR_DEUDA_FIFO'
@@ -247,5 +278,84 @@ export default class PagosController {
       },
       { skipAutoAudit: true }
     )
+  }
+
+  /**
+   * Anula justificadamente un pago procesado y revierte los saldos amortizados en las deudas asociadas
+   */
+  public async anularPago({ auth, bouncer, params, request, response }: HttpContext) {
+    const usuario = auth.getUserOrFail()
+    await bouncer.authorize(registrarPago)
+
+    const { motivoAnulacion } = await request.validateUsing(anularPagoValidator)
+
+    return await ejecutarTransaccionFinanciera({ auth, request }, async (trx) => {
+      const pago = await Pago.query({ client: trx })
+        .forUpdate()
+        .where('id', Number(params.id))
+        .preload('prorrateos')
+        .first()
+
+      if (!pago) {
+        return response.status(404).json({
+          codigo: 'PAGO_NO_ENCONTRADO',
+          mensaje: 'El pago especificado no existe.',
+        })
+      }
+
+      if (pago.estado === EstadoPago.ANULADO) {
+        return response.status(422).json({
+          codigo: 'PAGO_YA_ANULADO',
+          mensaje: 'El pago especificado ya se encuentra anulado.',
+        })
+      }
+
+      pago.estado = EstadoPago.ANULADO
+      pago.motivoAnulacion = motivoAnulacion
+      pago.anuladoPorId = usuario.id
+      pago.fechaAnulacion = DateTime.now()
+      pago.useTransaction(trx)
+      await pago.save()
+
+      const deudasRestituidas: Array<{
+        deudaId: number
+        montoRevertido: number
+        nuevoSaldo: number
+      }> = []
+
+      for (const prorrateo of pago.prorrateos) {
+        const deuda = await Deuda.query({ client: trx })
+          .forUpdate()
+          .where('id', prorrateo.deudaId)
+          .first()
+
+        if (deuda) {
+          const montoRevertido = Number(Number(prorrateo.montoAplicado).toFixed(2))
+          const nuevoSaldo = Number(
+            Math.min(
+              Number(deuda.montoOriginal),
+              Number(deuda.saldoPendiente) + montoRevertido
+            ).toFixed(2)
+          )
+
+          deuda.saldoPendiente = nuevoSaldo
+          deuda.estado = EstadoDeuda.PENDIENTE
+          deuda.useTransaction(trx)
+          await deuda.save()
+
+          deudasRestituidas.push({
+            deudaId: deuda.id,
+            montoRevertido,
+            nuevoSaldo,
+          })
+        }
+      }
+
+      return response.status(200).json({
+        mensaje: 'Pago anulado justificadamente y saldos de deuda restituidos',
+        data: pago,
+        deudasRestituidas,
+      })
+    })
   }
 }

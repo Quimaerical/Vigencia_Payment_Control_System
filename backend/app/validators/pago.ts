@@ -13,3 +13,10 @@ export const procesarPagoValidator = vine.create({
   numeroReferencia: vine.string().trim().maxLength(100).nullable().optional(),
   fechaPago: vine.date(),
 })
+
+/**
+ * Validador para la anulación justificada de pagos (inmutabilidad financiera)
+ */
+export const anularPagoValidator = vine.create({
+  motivoAnulacion: vine.string().trim().minLength(5).maxLength(500),
+})
