@@ -3,6 +3,8 @@ import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 import Deuda from './deuda.js'
 import Pago from './pago.js'
+import Asignacion from './asignacion.js'
+import ValeCaja from './vale_caja.js'
 
 export default class Persona extends BaseModel {
   @column({ isPrimary: true })
@@ -35,4 +37,10 @@ export default class Persona extends BaseModel {
 
   @hasMany(() => Pago)
   declare pagos: HasMany<typeof Pago>
+
+  @hasMany(() => Asignacion)
+  declare asignaciones: HasMany<typeof Asignacion>
+
+  @hasMany(() => ValeCaja, { foreignKey: 'solicitantePersonaId' })
+  declare valesCaja: HasMany<typeof ValeCaja>
 }

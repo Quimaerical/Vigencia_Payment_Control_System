@@ -9,6 +9,7 @@ export const EstadoSolicitud = {
   CREACION: 'creacion',
   ENVIO: 'envio',
   APROBACION: 'aprobacion',
+  RECHAZADA: 'rechazada',
   ENTREGA: 'entrega',
   CIERRE: 'cierre',
 } as const
@@ -25,6 +26,7 @@ export type MetodoPago = (typeof MetodoPago)[keyof typeof MetodoPago]
 
 export const EstadoDeuda = {
   PENDIENTE: 'pendiente',
+  ABONADO: 'abonado',
   LIQUIDADA: 'liquidada',
   ANULADA: 'anulada',
 } as const
@@ -35,3 +37,39 @@ export const EstadoPago = {
   ANULADO: 'anulado',
 } as const
 export type EstadoPago = (typeof EstadoPago)[keyof typeof EstadoPago]
+export const AreaProyecto = {
+  FISICA: 'fisica',
+  QUIMICA: 'quimica',
+  BIOLOGIA: 'biologia',
+} as const
+export type AreaProyecto = (typeof AreaProyecto)[keyof typeof AreaProyecto]
+
+export const AmbitoProyecto = {
+  INTERNO: 'interno',
+  EXTERNO: 'externo',
+} as const
+export type AmbitoProyecto = (typeof AmbitoProyecto)[keyof typeof AmbitoProyecto]
+
+export const PeriodicidadGrupoPago = {
+  SEMANAL: 'semanal',
+  QUINCENAL: 'quincenal',
+  MENSUAL: 'mensual',
+} as const
+export type PeriodicidadGrupoPago =
+  (typeof PeriodicidadGrupoPago)[keyof typeof PeriodicidadGrupoPago]
+
+export const EstadoCajaChica = {
+  ABIERTA: 'abierta',
+  CERRADA: 'cerrada',
+} as const
+export type EstadoCajaChica = (typeof EstadoCajaChica)[keyof typeof EstadoCajaChica]
+
+export const EstadoValeCaja = {
+  SOLICITADO: 'solicitado',
+  APROBADO: 'aprobado',
+  RECHAZADO: 'rechazado',
+  DESEMBOLSADO: 'desembolsado',
+  RENDIDO: 'rendido',
+  ANULADO: 'anulado',
+} as const
+export type EstadoValeCaja = (typeof EstadoValeCaja)[keyof typeof EstadoValeCaja]
