@@ -10,6 +10,7 @@ import {
   generarCausacionLoteValidator,
   anularRegistroValidator,
 } from '#validators/finanzas'
+import { filtrosListadoValidator } from '#validators/filtros'
 import { esGenerador, leerDetalleFinanciero } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
 
@@ -35,9 +36,7 @@ export default class CausacionesController {
   async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
     await bouncer.authorize(leerDetalleFinanciero)
-    const proyectoId = request.input('proyectoId')
-    const personaId = request.input('personaId')
-    const solicitudId = request.input('solicitudId')
+    const filtros = await request.validateUsing(filtrosListadoValidator)
     const estado = request.input('estado')
 
     const query = Deuda.query()
@@ -48,9 +47,9 @@ export default class CausacionesController {
       .orderBy('fecha_vencimiento', 'asc')
       .orderBy('id', 'asc')
 
-    if (proyectoId) query.where('proyecto_id', Number(proyectoId))
-    if (personaId) query.where('persona_id', Number(personaId))
-    if (solicitudId) query.where('solicitud_id', Number(solicitudId))
+    if (filtros.proyectoId) query.where('proyecto_id', filtros.proyectoId)
+    if (filtros.personaId) query.where('persona_id', filtros.personaId)
+    if (filtros.solicitudId) query.where('solicitud_id', filtros.solicitudId)
     if (estado) query.where('estado', String(estado))
 
     const deudas = await query

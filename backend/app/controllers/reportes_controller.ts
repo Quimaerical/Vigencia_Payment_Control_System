@@ -10,6 +10,7 @@ import SolicitudPago from '#models/solicitud_pago'
 import AuditLog from '#models/audit_log'
 import { generarReciboPagoPdf, generarSolicitudConsolidadaPdf } from '#services/pdf_service'
 import { esAdministrador, leerDetalleFinanciero } from '#abilities/main'
+import { filtrosAuditLogsValidator } from '#validators/filtros'
 
 export default class ReportesController {
   /**
@@ -125,16 +126,16 @@ export default class ReportesController {
     auth.getUserOrFail()
     await bouncer.authorize(esAdministrador)
 
+    const filtros = await request.validateUsing(filtrosAuditLogsValidator)
     const tablaAfectada = request.input('tablaAfectada')
     const accion = request.input('accion')
-    const usuarioId = request.input('usuarioId')
-    const limite = Math.max(1, Math.min(Number(request.input('limite', 100)) || 100, 500))
+    const limite = filtros.limite ?? 100
 
     const query = AuditLog.query().preload('usuario').orderBy('id', 'desc').limit(limite)
 
     if (tablaAfectada) query.where('tabla_afectada', String(tablaAfectada))
     if (accion) query.where('accion', String(accion))
-    if (usuarioId) query.where('usuario_id', Number(usuarioId))
+    if (filtros.usuarioId) query.where('usuario_id', filtros.usuarioId)
 
     const logs = await query
     return response.status(200).json({ data: logs })

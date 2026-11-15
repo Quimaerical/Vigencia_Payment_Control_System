@@ -7,6 +7,7 @@ import Prorrateo from '#models/prorrateo'
 import SolicitudPago from '#models/solicitud_pago'
 import AuditLog from '#models/audit_log'
 import { procesarPagoValidator, anularPagoValidator } from '#validators/pago'
+import { filtrosListadoValidator } from '#validators/filtros'
 import { leerDetalleFinanciero, registrarPago } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
 
@@ -17,8 +18,7 @@ export default class PagosController {
   public async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
     await bouncer.authorize(leerDetalleFinanciero)
-    const personaId = request.input('personaId')
-    const solicitudId = request.input('solicitudId')
+    const filtros = await request.validateUsing(filtrosListadoValidator)
     const estado = request.input('estado')
 
     const query = Pago.query()
@@ -28,8 +28,8 @@ export default class PagosController {
       .preload('prorrateos', (q) => q.preload('deuda'))
       .orderBy('id', 'desc')
 
-    if (personaId) query.where('persona_id', Number(personaId))
-    if (solicitudId) query.where('solicitud_id', Number(solicitudId))
+    if (filtros.personaId) query.where('persona_id', filtros.personaId)
+    if (filtros.solicitudId) query.where('solicitud_id', filtros.solicitudId)
     if (estado) query.where('estado', String(estado))
 
     const pagos = await query

@@ -5,6 +5,7 @@ import SolicitudPago from '#models/solicitud_pago'
 import Deuda from '#models/deuda'
 import Proyecto from '#models/proyecto'
 import { crearSolicitudPagoValidator, rechazarConMotivoValidator } from '#validators/finanzas'
+import { filtrosListadoValidator } from '#validators/filtros'
 import {
   esGenerador,
   esReceptor,
@@ -20,7 +21,7 @@ export default class SolicitudesPagoController {
   async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
     await bouncer.authorize(leerDetalleFinanciero)
-    const proyectoId = request.input('proyectoId')
+    const filtros = await request.validateUsing(filtrosListadoValidator)
     const estado = request.input('estado')
 
     const query = SolicitudPago.query()
@@ -32,7 +33,7 @@ export default class SolicitudesPagoController {
       .preload('pagos')
       .orderBy('id', 'desc')
 
-    if (proyectoId) query.where('proyecto_id', Number(proyectoId))
+    if (filtros.proyectoId) query.where('proyecto_id', filtros.proyectoId)
     if (estado) query.where('estado', String(estado))
 
     const solicitudes = await query
