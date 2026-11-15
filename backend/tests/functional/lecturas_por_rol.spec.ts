@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
 import Usuario from '#models/usuario'
+import Persona from '#models/persona'
 import { RolUsuario } from '@app/shared'
 
 const CONTRASENA = 'PasswordSeguro123!'
@@ -49,6 +50,19 @@ async function crearUsuario(rol: RolUsuario, etiqueta: string) {
     username: `lec_${etiqueta}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
     passwordHash: CONTRASENA,
     rol,
+    estaActivo: true,
+  })
+}
+
+/**
+ * Siembra un beneficiario con identificación única para comprobar qué roles la ven en el resumen.
+ */
+async function crearPersona() {
+  const sufijo = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`
+  return Persona.create({
+    identificacion: `V-RES-${sufijo}`,
+    nombres: 'Beneficiaria',
+    apellidos: 'Resumen',
     estaActivo: true,
   })
 }
@@ -105,6 +119,46 @@ test.group('Lecturas por rol: detalle financiero (ADR 0002)', (group) => {
         assert.equal(resp.status(), 404, `GET ${ruta} debía pasar la autorización (404)`)
         assert.equal((resp.body() as { codigo: string }).codigo, codigo)
       }
+    })
+  }
+})
+
+test.group('Lecturas por rol: contenido del resumen (ADR 0002, hallazgo A1)', (group) => {
+  group.each.setup(() => testUtils.db().wrapInGlobalTransaction())
+
+  test('el Administrador recibe el resumen sin el desglose por beneficiario', async ({
+    client,
+    assert,
+  }) => {
+    const persona = await crearPersona()
+    const admin = await crearUsuario(RolUsuario.ADMINISTRADOR, 'adm')
+
+    const resp = await client.get('/api/v1/reportes/resumen').loginAs(admin)
+
+    resp.assertStatus(200)
+    const body = resp.body() as Record<string, unknown>
+    assert.properties(body, ['kpis', 'porProyecto'])
+    assert.isArray(body.porProyecto)
+    assert.notProperty(body, 'porPersona', 'el Administrador no debe recibir porPersona')
+    assert.notInclude(resp.text(), 'identificacion', 'sin identificaciones de beneficiarios')
+    assert.notInclude(resp.text(), persona.identificacion, 'sin la identificación sembrada')
+  })
+
+  for (const rol of [RolUsuario.GENERADOR, RolUsuario.RECEPTOR]) {
+    test(`el rol ${rol} recibe el desglose por beneficiario`, async ({ client, assert }) => {
+      const persona = await crearPersona()
+      const usuario = await crearUsuario(rol, rol.slice(0, 3))
+
+      const resp = await client.get('/api/v1/reportes/resumen').loginAs(usuario)
+
+      resp.assertStatus(200)
+      const body = resp.body() as {
+        porPersona: Array<{ identificacion: string; totalCausado: number }>
+      }
+      assert.isArray(body.porPersona)
+      const fila = body.porPersona.find((p) => p.identificacion === persona.identificacion)
+      assert.exists(fila, `porPersona debe incluir la persona sembrada para ${rol}`)
+      assert.equal(fila!.totalCausado, 0)
     })
   }
 })

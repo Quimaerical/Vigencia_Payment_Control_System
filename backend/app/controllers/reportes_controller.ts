@@ -15,15 +15,17 @@ export default class ReportesController {
   /**
    * Responde las preguntas clave del sistema:
    * cuánto se ha causado, cuánto se ha pagado, cuándo, a quién, por qué proyecto y cuánto se adeuda.
+   * El desglose por beneficiario (`porPersona`) es detalle financiero: solo lo reciben los
+   * roles 'generador' y 'receptor'; el administrador recibe los totales (ADR 0002).
    */
-  async resumen({ auth, response }: HttpContext) {
+  async resumen({ auth, bouncer, response }: HttpContext) {
     auth.getUserOrFail()
+    const incluirPorPersona = await bouncer.allows(leerDetalleFinanciero)
 
-    const [deudas, pagos, proyectos, personas, cajasAbiertas, valesCustodia] = await Promise.all([
+    const [deudas, pagos, proyectos, cajasAbiertas, valesCustodia] = await Promise.all([
       Deuda.query().whereNot('estado', EstadoDeuda.ANULADA).preload('proyecto').preload('persona'),
       Pago.query().where('estado', EstadoPago.PROCESADO).preload('persona'),
       Proyecto.query().orderBy('id', 'asc'),
-      Persona.query().orderBy('id', 'asc'),
       CajaChica.query().where('estado', EstadoCajaChica.ABIERTA),
       ValeCaja.query().whereIn('estado', [
         EstadoValeCaja.SOLICITADO,
@@ -45,6 +47,16 @@ export default class ReportesController {
     )
     const porcentajeCubierto =
       totalCausado > 0 ? Number(((totalPagado / totalCausado) * 100).toFixed(1)) : 0
+
+    const kpis = {
+      totalCausado,
+      totalPagado,
+      porcentajeCubierto,
+      saldoExigible,
+      pasivosFifoCount,
+      cajaChicaSaldo,
+      valesCustodiaCount: valesCustodia.length,
+    }
 
     // Desglose por proyecto
     const porProyecto = proyectos.map((proy) => {
@@ -68,6 +80,14 @@ export default class ReportesController {
         saldoAdeudado: pendienteProy,
       }
     })
+
+    // Mínimo privilegio (ADR 0002, hallazgo A1): sin detalle por beneficiario para el
+    // administrador; ni siquiera se consulta la tabla personas.
+    if (!incluirPorPersona) {
+      return response.status(200).json({ kpis, porProyecto })
+    }
+
+    const personas = await Persona.query().orderBy('id', 'asc')
 
     // Desglose de deuda y pagos por persona (beneficiario)
     const porPersona = personas.map((per) => {
@@ -95,19 +115,7 @@ export default class ReportesController {
       }
     })
 
-    return response.status(200).json({
-      kpis: {
-        totalCausado,
-        totalPagado,
-        porcentajeCubierto,
-        saldoExigible,
-        pasivosFifoCount,
-        cajaChicaSaldo,
-        valesCustodiaCount: valesCustodia.length,
-      },
-      porProyecto,
-      porPersona,
-    })
+    return response.status(200).json({ kpis, porProyecto, porPersona })
   }
 
   /**
