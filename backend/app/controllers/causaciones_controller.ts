@@ -10,7 +10,7 @@ import {
   generarCausacionLoteValidator,
   anularRegistroValidator,
 } from '#validators/finanzas'
-import { esGenerador } from '#abilities/main'
+import { esGenerador, leerDetalleFinanciero } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
 
 export default class CausacionesController {
@@ -30,10 +30,11 @@ export default class CausacionesController {
   }
 
   /**
-   * Lista las causaciones / deudas registradas con filtros por proyecto, persona, solicitud o estado
+   * Lista las causaciones / deudas registradas con filtros por proyecto, persona, solicitud o estado (roles 'generador' y 'receptor')
    */
-  async listar({ auth, request, response }: HttpContext) {
+  async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
     const proyectoId = request.input('proyectoId')
     const personaId = request.input('personaId')
     const solicitudId = request.input('solicitudId')

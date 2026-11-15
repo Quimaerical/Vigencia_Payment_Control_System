@@ -5,15 +5,21 @@ import SolicitudPago from '#models/solicitud_pago'
 import Deuda from '#models/deuda'
 import Proyecto from '#models/proyecto'
 import { crearSolicitudPagoValidator, rechazarConMotivoValidator } from '#validators/finanzas'
-import { esGenerador, esReceptor, operarFinanzasNoAdmin } from '#abilities/main'
+import {
+  esGenerador,
+  esReceptor,
+  leerDetalleFinanciero,
+  operarFinanzasNoAdmin,
+} from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
 
 export default class SolicitudesPagoController {
   /**
-   * Lista todas las solicitudes de pago con sus relaciones
+   * Lista todas las solicitudes de pago con sus relaciones (roles 'generador' y 'receptor')
    */
-  async listar({ auth, request, response }: HttpContext) {
+  async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
     const proyectoId = request.input('proyectoId')
     const estado = request.input('estado')
 
@@ -34,10 +40,11 @@ export default class SolicitudesPagoController {
   }
 
   /**
-   * Muestra el detalle consolidado de una solicitud de pago
+   * Muestra el detalle consolidado de una solicitud de pago (roles 'generador' y 'receptor')
    */
-  async mostrar({ auth, params, response }: HttpContext) {
+  async mostrar({ auth, bouncer, params, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
 
     const solicitud = await SolicitudPago.query()
       .where('id', Number(params.id))

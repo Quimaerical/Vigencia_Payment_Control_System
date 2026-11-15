@@ -6,15 +6,16 @@ import Proyecto from '#models/proyecto'
 import GrupoPago from '#models/grupo_pago'
 import { crearAsignacionValidator, actualizarAsignacionValidator } from '#validators/catalogo'
 import { cambiarEstadoActivoValidator } from '#validators/usuario'
-import { esGenerador } from '#abilities/main'
+import { esGenerador, leerDetalleFinanciero } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
 
 export default class AsignacionesController {
   /**
-   * Lista las asignaciones (cruce persona + proyecto + grupo_pago)
+   * Lista las asignaciones (cruce persona + proyecto + grupo_pago) (roles 'generador' y 'receptor')
    */
-  async listar({ auth, request, response }: HttpContext) {
+  async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
     const proyectoId = request.input('proyectoId')
     const personaId = request.input('personaId')
     const grupoPagoId = request.input('grupoPagoId')

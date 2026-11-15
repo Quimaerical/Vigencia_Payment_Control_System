@@ -65,3 +65,18 @@ export const operarFinanzasNoAdmin = Bouncer.ability((user: Usuario) => {
   }
   return true
 })
+
+/**
+ * Lectura del detalle financiero (causaciones/deudas, asignaciones, solicitudes, pagos,
+ * cajas chicas, vales y sus PDF). Lista blanca: solo Generador y Receptor, que lo necesitan
+ * para operar; el Administrador solo lee el resumen agregado (ADR 0002).
+ */
+export const leerDetalleFinanciero = Bouncer.ability((user: Usuario) => {
+  if (user.rol !== RolUsuario.GENERADOR && user.rol !== RolUsuario.RECEPTOR) {
+    return AuthorizationResponse.deny(
+      'Solo los usuarios con rol generador o receptor pueden consultar el detalle financiero; el administrador consulta el resumen agregado de reportes',
+      403
+    )
+  }
+  return true
+})

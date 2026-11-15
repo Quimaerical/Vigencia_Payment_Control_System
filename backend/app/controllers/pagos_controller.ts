@@ -7,15 +7,16 @@ import Prorrateo from '#models/prorrateo'
 import SolicitudPago from '#models/solicitud_pago'
 import AuditLog from '#models/audit_log'
 import { procesarPagoValidator, anularPagoValidator } from '#validators/pago'
-import { registrarPago } from '#abilities/main'
+import { leerDetalleFinanciero, registrarPago } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
 
 export default class PagosController {
   /**
-   * Lista los pagos registrados con sus relaciones de persona, usuario, solicitud y prorrateos
+   * Lista los pagos registrados con sus relaciones de persona, usuario, solicitud y prorrateos (roles 'generador' y 'receptor')
    */
-  public async listar({ auth, request, response }: HttpContext) {
+  public async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
     const personaId = request.input('personaId')
     const solicitudId = request.input('solicitudId')
     const estado = request.input('estado')

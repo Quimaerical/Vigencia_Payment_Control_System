@@ -9,7 +9,7 @@ import ValeCaja from '#models/vale_caja'
 import SolicitudPago from '#models/solicitud_pago'
 import AuditLog from '#models/audit_log'
 import { generarReciboPagoPdf, generarSolicitudConsolidadaPdf } from '#services/pdf_service'
-import { esAdministrador } from '#abilities/main'
+import { esAdministrador, leerDetalleFinanciero } from '#abilities/main'
 
 export default class ReportesController {
   /**
@@ -133,10 +133,11 @@ export default class ReportesController {
   }
 
   /**
-   * Genera el PDF de un Recibo Individual de Pago (con detalle de amortización FIFO)
+   * Genera el PDF de un Recibo Individual de Pago (con detalle de amortización FIFO) (roles 'generador' y 'receptor')
    */
-  async reciboPagoPdf({ auth, params, response }: HttpContext) {
+  async reciboPagoPdf({ auth, bouncer, params, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
 
     const pago = await Pago.query()
       .where('id', Number(params.id))
@@ -178,10 +179,11 @@ export default class ReportesController {
   }
 
   /**
-   * Genera el PDF de una Solicitud Consolidada de Pago
+   * Genera el PDF de una Solicitud Consolidada de Pago (roles 'generador' y 'receptor')
    */
-  async solicitudConsolidadaPdf({ auth, params, response }: HttpContext) {
+  async solicitudConsolidadaPdf({ auth, bouncer, params, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
 
     const solicitud = await SolicitudPago.query()
       .where('id', Number(params.id))

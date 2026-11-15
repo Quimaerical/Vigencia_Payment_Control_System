@@ -12,15 +12,21 @@ import {
   rendirValeCajaValidator,
   anularRegistroValidator,
 } from '#validators/finanzas'
-import { esGenerador, esReceptor, operarFinanzasNoAdmin } from '#abilities/main'
+import {
+  esGenerador,
+  esReceptor,
+  leerDetalleFinanciero,
+  operarFinanzasNoAdmin,
+} from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
 
 export default class CajasChicasController {
   /**
-   * Lista todas las cajas chicas con proyecto, responsable, caja origen y vales
+   * Lista todas las cajas chicas con proyecto, responsable, caja origen y vales (roles 'generador' y 'receptor')
    */
-  async listar({ auth, request, response }: HttpContext) {
+  async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
     const proyectoId = request.input('proyectoId')
     const estado = request.input('estado')
 
@@ -39,10 +45,11 @@ export default class CajasChicasController {
   }
 
   /**
-   * Muestra el detalle de una caja chica y sus vales asociados
+   * Muestra el detalle de una caja chica y sus vales asociados (roles 'generador' y 'receptor')
    */
-  async mostrar({ auth, params, response }: HttpContext) {
+  async mostrar({ auth, bouncer, params, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
 
     const caja = await CajaChica.query()
       .where('id', Number(params.id))
