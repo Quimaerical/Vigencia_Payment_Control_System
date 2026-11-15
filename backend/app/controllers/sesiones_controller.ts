@@ -7,10 +7,17 @@ export default class SesionesController {
   /**
    * Inicia sesión autenticando credenciales de usuario y emitiendo un Bearer token
    */
-  async login({ request, serialize }: HttpContext) {
+  async login({ request, response, serialize }: HttpContext) {
     const { username, password } = await request.validateUsing(loginValidator)
 
     const user = await Usuario.verifyCredentials(username, password)
+    if (!user.estaActivo) {
+      return response.status(403).json({
+        codigo: 'USUARIO_INACTIVO',
+        mensaje: 'La cuenta de usuario se encuentra desactivada por el Administrador del Sistema.',
+      })
+    }
+
     const token = await Usuario.accessTokens.create(user)
 
     return serialize({
