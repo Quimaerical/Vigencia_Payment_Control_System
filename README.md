@@ -168,6 +168,33 @@ La suite recrea el esquema de `vigencia_test` al empezar (`migration:fresh`) y n
 `vigencia_db`: aborta si `DB_DATABASE` no termina en `_test` o si hay una `DATABASE_URL`.
 Cada prueba corre en una transacción que se revierte, salvo los grupos `[concurrencia]`.
 
+### 2.2. Rol de base de datos de la aplicación (ADR 0017)
+El servidor se conecta con el rol `vigencia_app`, que solo puede leer y escribir filas: no
+puede desactivar triggers, borrar la auditoría ni cambiar el esquema. Las migraciones lo crean
+sin `LOGIN`; cada entorno lo activa **una vez**:
+
+1. Migrar con el dueño de las tablas (la variable del comando gana a la del `.env`):
+   ```bash
+   DATABASE_URL=postgres://<dueño>:<clave>@<host>:5432/<bd> node ace migration:run
+   ```
+2. Como dueño, darle acceso con una contraseña aleatoria (`openssl rand -base64 32`):
+   ```sql
+   ALTER ROLE vigencia_app LOGIN PASSWORD '<contraseña>';
+   ```
+   En Neon, hacerlo por SQL; **no** crear el rol desde la consola (lo añadiría a `neon_superuser`).
+3. Cambiar la credencial del servidor a `vigencia_app` (`DB_USER`/`DB_PASSWORD` o
+   `DATABASE_URL`). La credencial del dueño no se guarda en el servidor.
+4. Comprobar como dueño que todo sale `f`:
+   ```sql
+   SELECT rolsuper, rolcreaterole, rolcreatedb, rolbypassrls,
+          has_schema_privilege('vigencia_app', 'public', 'CREATE')
+   FROM pg_roles WHERE rolname = 'vigencia_app';
+   ```
+   y hacer un login de prueba contra la API.
+
+Volver atrás: poner otra vez la credencial anterior en el servidor (no hace falta revertir la
+migración). Toda tabla nueva necesita su `GRANT` en una migración nueva; las pruebas fallan si falta.
+
 ### 3. Configurar y Activar el Túnel de Cloudflare (cloudflared)
 Para exponer tu API local de forma segura hacia Vercel:
 
