@@ -81,225 +81,221 @@ export default class PagosController {
     const montoTotalRedondeado = Number(Number(montoTotal).toFixed(2))
 
     // 3. Ejecución transaccional ACID con bloqueo pesimista y contexto de sesión PostgreSQL
-    return await ejecutarTransaccionFinanciera(
-      { auth, request },
-      async (trx) => {
-        // 3.0 Validar pertenencia, proyecto y estado de solicitudId si fue informado
-        let solicitudAsociada: SolicitudPago | null = null
-        if (solicitudId) {
-          solicitudAsociada = await SolicitudPago.query({ client: trx })
-            .forUpdate()
-            .where('id', Number(solicitudId))
-            .where('proyecto_id', Number(proyectoId))
-            .whereIn('estado', [EstadoSolicitud.APROBACION, EstadoSolicitud.ENTREGA])
-            .first()
-
-          if (!solicitudAsociada) {
-            return response.status(422).json({
-              codigo: 'SOLICITUD_INVALIDA',
-              mensaje:
-                'La solicitud de pago no existe, no pertenece al proyecto especificado o no se encuentra en estado de aprobación o entrega.',
-              solicitudId,
-              proyectoId,
-            })
-          }
-        }
-
-        // 3.1 FIFO: Buscar deudas pendientes del proyecto ordenadas por vencimiento más antiguo
-        const deudasQuery = Deuda.query({ client: trx })
+    return await ejecutarTransaccionFinanciera({ auth, request }, async (trx) => {
+      // 3.0 Validar pertenencia, proyecto y estado de solicitudId si fue informado
+      let solicitudAsociada: SolicitudPago | null = null
+      if (solicitudId) {
+        solicitudAsociada = await SolicitudPago.query({ client: trx })
           .forUpdate()
-          .where('persona_id', Number(personaId))
+          .where('id', Number(solicitudId))
           .where('proyecto_id', Number(proyectoId))
-          .whereIn('estado', [EstadoDeuda.PENDIENTE, EstadoDeuda.ABONADO])
-          .where('saldo_pendiente', '>', 0)
-          .orderBy('fecha_vencimiento', 'asc')
+          .whereIn('estado', [EstadoSolicitud.APROBACION, EstadoSolicitud.ENTREGA])
+          .first()
 
-        if (solicitudId) {
-          deudasQuery.where('solicitud_id', Number(solicitudId))
-        }
-
-        const deudasPendientes = await deudasQuery
-
-        if (deudasPendientes.length === 0) {
+        if (!solicitudAsociada) {
           return response.status(422).json({
-            codigo: 'SIN_DEUDAS_PENDIENTES',
-            mensaje: 'No existen deudas pendientes para la persona en el proyecto especificado.',
-            personaId,
+            codigo: 'SOLICITUD_INVALIDA',
+            mensaje:
+              'La solicitud de pago no existe, no pertenece al proyecto especificado o no se encuentra en estado de aprobación o entrega.',
+            solicitudId,
             proyectoId,
           })
         }
+      }
 
-        // 3.2 Control estricto de sobrepago: el pago no puede exceder la deuda total del proyecto
-        const totalDeudaPendiente = Number(
-          deudasPendientes.reduce((acc, d) => acc + Number(d.saldoPendiente), 0).toFixed(2)
-        )
+      // 3.1 FIFO: Buscar deudas pendientes del proyecto ordenadas por vencimiento más antiguo
+      const deudasQuery = Deuda.query({ client: trx })
+        .forUpdate()
+        .where('persona_id', Number(personaId))
+        .where('proyecto_id', Number(proyectoId))
+        .whereIn('estado', [EstadoDeuda.PENDIENTE, EstadoDeuda.ABONADO])
+        .where('saldo_pendiente', '>', 0)
+        .orderBy('fecha_vencimiento', 'asc')
 
-        if (montoTotalRedondeado > totalDeudaPendiente) {
-          return response.status(422).json({
-            codigo: 'SOBREPAGO_NO_PERMITIDO',
-            mensaje: 'El monto solicitado excede el total de la deuda pendiente en el proyecto.',
-            deudaTotalPendiente: totalDeudaPendiente,
-            montoSolicitado: montoTotalRedondeado,
-          })
-        }
+      if (solicitudId) {
+        deudasQuery.where('solicitud_id', Number(solicitudId))
+      }
 
-        // 3.3 Registrar el Pago Maestro
-        const pago = new Pago()
-        pago.personaId = Number(personaId)
-        pago.usuarioId = usuario.id
-        pago.solicitudId = solicitudId ? Number(solicitudId) : null
-        pago.montoTotal = montoTotalRedondeado
-        pago.metodoPago = metodoPago
-        pago.numeroReferencia = numeroReferencia ?? null
-        pago.fechaPago = fechaPago
-        pago.estado = EstadoPago.PROCESADO
-        pago.useTransaction(trx)
-        await pago.save()
+      const deudasPendientes = await deudasQuery
 
-        // 3.4 Algoritmo de Imputación FIFO y Prorrateo
-        let montoRestante = montoTotalRedondeado
-        const amortizaciones: Array<{
-          prorrateoId: number
-          deudaId: number
-          montoAplicado: number
-          saldoAnterior: number
-          nuevoSaldo: number
-          estadoAnterior: string
-          nuevoEstado: string
-        }> = []
-
-        for (const deuda of deudasPendientes) {
-          if (montoRestante <= 0) break
-
-          const saldoAnterior = Number(Number(deuda.saldoPendiente).toFixed(2))
-          const estadoAnterior = deuda.estado
-          const montoAAplicar = Number(Math.min(saldoAnterior, montoRestante).toFixed(2))
-          const nuevoSaldo = Number((saldoAnterior - montoAAplicar).toFixed(2))
-
-          deuda.saldoPendiente = nuevoSaldo
-          if (nuevoSaldo === 0) {
-            deuda.estado = EstadoDeuda.LIQUIDADA
-          } else if (nuevoSaldo < Number(deuda.montoOriginal)) {
-            deuda.estado = EstadoDeuda.ABONADO
-          }
-          deuda.useTransaction(trx)
-          await deuda.save()
-
-          const prorrateo = new Prorrateo()
-          prorrateo.pagoId = pago.id
-          prorrateo.deudaId = deuda.id
-          prorrateo.montoAplicado = montoAAplicar
-          prorrateo.useTransaction(trx)
-          await prorrateo.save()
-
-          amortizaciones.push({
-            prorrateoId: prorrateo.id,
-            deudaId: deuda.id,
-            montoAplicado: montoAAplicar,
-            saldoAnterior,
-            nuevoSaldo,
-            estadoAnterior,
-            nuevoEstado: deuda.estado,
-          })
-
-          montoRestante = Number((montoRestante - montoAAplicar).toFixed(2))
-        }
-
-        let solicitudPasoAEntrega = false
-        if (solicitudAsociada && solicitudAsociada.estado === EstadoSolicitud.APROBACION) {
-          solicitudAsociada.estado = EstadoSolicitud.ENTREGA
-          solicitudAsociada.useTransaction(trx)
-          await solicitudAsociada.save()
-          solicitudPasoAEntrega = true
-        }
-
-        // 3.5 Trazabilidad Forense Completa en audit_logs
-        if (solicitudPasoAEntrega && solicitudAsociada) {
-          const auditSolicitud = new AuditLog()
-          auditSolicitud.accion = 'SOLICITUD_EN_ENTREGA'
-          auditSolicitud.tablaAfectada = 'solicitudes_pago'
-          auditSolicitud.registroId = solicitudAsociada.id
-          auditSolicitud.usuarioId = usuario.id
-          auditSolicitud.direccionIp = request.ip()
-          auditSolicitud.datosAnteriores = {
-            estado: EstadoSolicitud.APROBACION,
-          }
-          auditSolicitud.datosNuevos = {
-            estado: EstadoSolicitud.ENTREGA,
-            pagoId: pago.id,
-          }
-          auditSolicitud.useTransaction(trx)
-          await auditSolicitud.save()
-        }
-        const auditPago = new AuditLog()
-        auditPago.accion = 'CREAR_PAGO'
-        auditPago.tablaAfectada = 'pagos'
-        auditPago.registroId = pago.id
-        auditPago.usuarioId = usuario.id
-        auditPago.direccionIp = request.ip()
-        auditPago.datosAnteriores = null
-        auditPago.datosNuevos = {
-          id: pago.id,
-          personaId: pago.personaId,
-          usuarioId: pago.usuarioId,
-          solicitudId: pago.solicitudId,
-          montoTotal: pago.montoTotal,
-          metodoPago: pago.metodoPago,
-          numeroReferencia: pago.numeroReferencia,
-          fechaPago: pago.fechaPago.toISODate(),
-          estado: pago.estado,
-        }
-        auditPago.useTransaction(trx)
-        await auditPago.save()
-
-        for (const item of amortizaciones) {
-          const auditDeuda = new AuditLog()
-          auditDeuda.accion = 'AMORTIZAR_DEUDA_FIFO'
-          auditDeuda.tablaAfectada = 'deudas'
-          auditDeuda.registroId = item.deudaId
-          auditDeuda.usuarioId = usuario.id
-          auditDeuda.direccionIp = request.ip()
-          auditDeuda.datosAnteriores = {
-            saldoPendiente: item.saldoAnterior,
-            estado: item.estadoAnterior,
-          }
-          auditDeuda.datosNuevos = {
-            saldoPendiente: item.nuevoSaldo,
-            estado: item.nuevoEstado,
-            montoAplicado: item.montoAplicado,
-            pagoId: pago.id,
-            prorrateoId: item.prorrateoId,
-          }
-          auditDeuda.useTransaction(trx)
-          await auditDeuda.save()
-
-          const auditProrrateo = new AuditLog()
-          auditProrrateo.accion = 'CREAR_PRORRATEO'
-          auditProrrateo.tablaAfectada = 'prorrateos'
-          auditProrrateo.registroId = item.prorrateoId
-          auditProrrateo.usuarioId = usuario.id
-          auditProrrateo.direccionIp = request.ip()
-          auditProrrateo.datosAnteriores = null
-          auditProrrateo.datosNuevos = {
-            pagoId: pago.id,
-            deudaId: item.deudaId,
-            montoAplicado: item.montoAplicado,
-          }
-          auditProrrateo.useTransaction(trx)
-          await auditProrrateo.save()
-        }
-
-        // 3.6 Respuesta de éxito
-        return response.status(201).json({
-          mensaje: 'Pago procesado exitosamente mediante FIFO',
-          pagoId: pago.id,
-          montoAplicado: montoTotalRedondeado,
-          deudasAmortizadas: amortizaciones.length,
-          detalles: amortizaciones,
+      if (deudasPendientes.length === 0) {
+        return response.status(422).json({
+          codigo: 'SIN_DEUDAS_PENDIENTES',
+          mensaje: 'No existen deudas pendientes para la persona en el proyecto especificado.',
+          personaId,
+          proyectoId,
         })
-      },
-      { skipAutoAudit: true }
-    )
+      }
+
+      // 3.2 Control estricto de sobrepago: el pago no puede exceder la deuda total del proyecto
+      const totalDeudaPendiente = Number(
+        deudasPendientes.reduce((acc, d) => acc + Number(d.saldoPendiente), 0).toFixed(2)
+      )
+
+      if (montoTotalRedondeado > totalDeudaPendiente) {
+        return response.status(422).json({
+          codigo: 'SOBREPAGO_NO_PERMITIDO',
+          mensaje: 'El monto solicitado excede el total de la deuda pendiente en el proyecto.',
+          deudaTotalPendiente: totalDeudaPendiente,
+          montoSolicitado: montoTotalRedondeado,
+        })
+      }
+
+      // 3.3 Registrar el Pago Maestro
+      const pago = new Pago()
+      pago.personaId = Number(personaId)
+      pago.usuarioId = usuario.id
+      pago.solicitudId = solicitudId ? Number(solicitudId) : null
+      pago.montoTotal = montoTotalRedondeado
+      pago.metodoPago = metodoPago
+      pago.numeroReferencia = numeroReferencia ?? null
+      pago.fechaPago = fechaPago
+      pago.estado = EstadoPago.PROCESADO
+      pago.useTransaction(trx)
+      await pago.save()
+
+      // 3.4 Algoritmo de Imputación FIFO y Prorrateo
+      let montoRestante = montoTotalRedondeado
+      const amortizaciones: Array<{
+        prorrateoId: number
+        deudaId: number
+        montoAplicado: number
+        saldoAnterior: number
+        nuevoSaldo: number
+        estadoAnterior: string
+        nuevoEstado: string
+      }> = []
+
+      for (const deuda of deudasPendientes) {
+        if (montoRestante <= 0) break
+
+        const saldoAnterior = Number(Number(deuda.saldoPendiente).toFixed(2))
+        const estadoAnterior = deuda.estado
+        const montoAAplicar = Number(Math.min(saldoAnterior, montoRestante).toFixed(2))
+        const nuevoSaldo = Number((saldoAnterior - montoAAplicar).toFixed(2))
+
+        deuda.saldoPendiente = nuevoSaldo
+        if (nuevoSaldo === 0) {
+          deuda.estado = EstadoDeuda.LIQUIDADA
+        } else if (nuevoSaldo < Number(deuda.montoOriginal)) {
+          deuda.estado = EstadoDeuda.ABONADO
+        }
+        deuda.useTransaction(trx)
+        await deuda.save()
+
+        const prorrateo = new Prorrateo()
+        prorrateo.pagoId = pago.id
+        prorrateo.deudaId = deuda.id
+        prorrateo.montoAplicado = montoAAplicar
+        prorrateo.useTransaction(trx)
+        await prorrateo.save()
+
+        amortizaciones.push({
+          prorrateoId: prorrateo.id,
+          deudaId: deuda.id,
+          montoAplicado: montoAAplicar,
+          saldoAnterior,
+          nuevoSaldo,
+          estadoAnterior,
+          nuevoEstado: deuda.estado,
+        })
+
+        montoRestante = Number((montoRestante - montoAAplicar).toFixed(2))
+      }
+
+      let solicitudPasoAEntrega = false
+      if (solicitudAsociada && solicitudAsociada.estado === EstadoSolicitud.APROBACION) {
+        solicitudAsociada.estado = EstadoSolicitud.ENTREGA
+        solicitudAsociada.useTransaction(trx)
+        await solicitudAsociada.save()
+        solicitudPasoAEntrega = true
+      }
+
+      // 3.5 Trazabilidad Forense Completa en audit_logs
+      if (solicitudPasoAEntrega && solicitudAsociada) {
+        const auditSolicitud = new AuditLog()
+        auditSolicitud.accion = 'SOLICITUD_EN_ENTREGA'
+        auditSolicitud.tablaAfectada = 'solicitudes_pago'
+        auditSolicitud.registroId = solicitudAsociada.id
+        auditSolicitud.usuarioId = usuario.id
+        auditSolicitud.direccionIp = request.ip()
+        auditSolicitud.datosAnteriores = {
+          estado: EstadoSolicitud.APROBACION,
+        }
+        auditSolicitud.datosNuevos = {
+          estado: EstadoSolicitud.ENTREGA,
+          pagoId: pago.id,
+        }
+        auditSolicitud.useTransaction(trx)
+        await auditSolicitud.save()
+      }
+      const auditPago = new AuditLog()
+      auditPago.accion = 'CREAR_PAGO'
+      auditPago.tablaAfectada = 'pagos'
+      auditPago.registroId = pago.id
+      auditPago.usuarioId = usuario.id
+      auditPago.direccionIp = request.ip()
+      auditPago.datosAnteriores = null
+      auditPago.datosNuevos = {
+        id: pago.id,
+        personaId: pago.personaId,
+        usuarioId: pago.usuarioId,
+        solicitudId: pago.solicitudId,
+        montoTotal: pago.montoTotal,
+        metodoPago: pago.metodoPago,
+        numeroReferencia: pago.numeroReferencia,
+        fechaPago: pago.fechaPago.toISODate(),
+        estado: pago.estado,
+      }
+      auditPago.useTransaction(trx)
+      await auditPago.save()
+
+      for (const item of amortizaciones) {
+        const auditDeuda = new AuditLog()
+        auditDeuda.accion = 'AMORTIZAR_DEUDA_FIFO'
+        auditDeuda.tablaAfectada = 'deudas'
+        auditDeuda.registroId = item.deudaId
+        auditDeuda.usuarioId = usuario.id
+        auditDeuda.direccionIp = request.ip()
+        auditDeuda.datosAnteriores = {
+          saldoPendiente: item.saldoAnterior,
+          estado: item.estadoAnterior,
+        }
+        auditDeuda.datosNuevos = {
+          saldoPendiente: item.nuevoSaldo,
+          estado: item.nuevoEstado,
+          montoAplicado: item.montoAplicado,
+          pagoId: pago.id,
+          prorrateoId: item.prorrateoId,
+        }
+        auditDeuda.useTransaction(trx)
+        await auditDeuda.save()
+
+        const auditProrrateo = new AuditLog()
+        auditProrrateo.accion = 'CREAR_PRORRATEO'
+        auditProrrateo.tablaAfectada = 'prorrateos'
+        auditProrrateo.registroId = item.prorrateoId
+        auditProrrateo.usuarioId = usuario.id
+        auditProrrateo.direccionIp = request.ip()
+        auditProrrateo.datosAnteriores = null
+        auditProrrateo.datosNuevos = {
+          pagoId: pago.id,
+          deudaId: item.deudaId,
+          montoAplicado: item.montoAplicado,
+        }
+        auditProrrateo.useTransaction(trx)
+        await auditProrrateo.save()
+      }
+
+      // 3.6 Respuesta de éxito
+      return response.status(201).json({
+        mensaje: 'Pago procesado exitosamente mediante FIFO',
+        pagoId: pago.id,
+        montoAplicado: montoTotalRedondeado,
+        deudasAmortizadas: amortizaciones.length,
+        detalles: amortizaciones,
+      })
+    })
   }
 
   /**
