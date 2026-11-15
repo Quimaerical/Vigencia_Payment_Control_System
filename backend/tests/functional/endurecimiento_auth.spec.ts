@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import type { ApiClient } from '@japa/api-client'
 import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
+import limiter from '@adonisjs/limiter/services/main'
 import { DateTime } from 'luxon'
 import Usuario from '#models/usuario'
 import { RolUsuario } from '@app/shared'
@@ -156,5 +157,102 @@ test.group('Endurecimiento auth: expiración de tokens (ADR 0003)', (group) => {
 
     const resp = await client.get('/api/v1/account/perfil').bearerToken(bearer)
     resp.assertStatus(200)
+  })
+})
+
+/**
+ * Intenta iniciar sesión desde la IP simulada indicada (X-Forwarded-For se acepta porque
+ * el cliente de pruebas llega por loopback, ADR 0011) y devuelve la respuesta.
+ */
+async function intentarLogin(client: ApiClient, username: string, password: string, ip: string) {
+  return client
+    .post('/api/v1/auth/login')
+    .header('X-Forwarded-For', ip)
+    .json({ username, password })
+}
+
+const CLAVE_ERRONEA = 'ClaveIncorrecta999'
+
+test.group('Endurecimiento auth: límite de intentos de login (ADR 0004)', (group) => {
+  group.each.setup(() => testUtils.db().wrapInGlobalTransaction())
+  group.teardown(() => limiter.clear(['memory']))
+
+  test('el 6.º login fallido recibe 429 con Retry-After', async ({ client, assert }) => {
+    const usuario = await crearUsuario(RolUsuario.RECEPTOR, 'lim6')
+
+    for (let intento = 1; intento <= 5; intento++) {
+      const resp = await intentarLogin(client, usuario.username, CLAVE_ERRONEA, '203.0.113.7')
+      resp.assertStatus(400)
+    }
+
+    const resp = await intentarLogin(client, usuario.username, CLAVE_ERRONEA, '203.0.113.7')
+    resp.assertStatus(429)
+    const cuerpo = resp.body() as unknown as { codigo: string; reintentarEn: number }
+    assert.equal(cuerpo.codigo, 'DEMASIADOS_INTENTOS')
+    assert.isAbove(cuerpo.reintentarEn, 0)
+    assert.isAbove(Number(resp.header('retry-after')), 0)
+  })
+
+  test('queda bloqueado incluso con la contraseña correcta', async ({ client }) => {
+    const usuario = await crearUsuario(RolUsuario.RECEPTOR, 'limok')
+    for (let intento = 1; intento <= 5; intento++) {
+      await intentarLogin(client, usuario.username, CLAVE_ERRONEA, '203.0.113.8')
+    }
+
+    const resp = await intentarLogin(client, usuario.username, CONTRASENA, '203.0.113.8')
+    resp.assertStatus(429)
+  })
+
+  test('un login correcto desde otra IP no queda bloqueado', async ({ client, assert }) => {
+    const usuario = await crearUsuario(RolUsuario.RECEPTOR, 'limip')
+    for (let intento = 1; intento <= 5; intento++) {
+      await intentarLogin(client, usuario.username, CLAVE_ERRONEA, '203.0.113.9')
+    }
+
+    const resp = await intentarLogin(client, usuario.username, CONTRASENA, '198.51.100.9')
+    resp.assertStatus(200)
+    const cuerpo = resp.body() as { token?: string; data?: { token?: string } }
+    assert.isString(cuerpo.token ?? cuerpo.data?.token)
+  })
+
+  test('un login correcto reinicia el contador', async ({ client }) => {
+    const usuario = await crearUsuario(RolUsuario.RECEPTOR, 'limreset')
+    const ip = '203.0.113.10'
+
+    for (let intento = 1; intento <= 4; intento++) {
+      const resp = await intentarLogin(client, usuario.username, CLAVE_ERRONEA, ip)
+      resp.assertStatus(400)
+    }
+    const correcto = await intentarLogin(client, usuario.username, CONTRASENA, ip)
+    correcto.assertStatus(200)
+    for (let intento = 1; intento <= 4; intento++) {
+      const resp = await intentarLogin(client, usuario.username, CLAVE_ERRONEA, ip)
+      resp.assertStatus(400)
+    }
+  })
+
+  test('cambiar mayúsculas no salta el límite', async ({ client }) => {
+    const usuario = await crearUsuario(RolUsuario.RECEPTOR, 'limmay')
+    const ip = '203.0.113.11'
+
+    for (let intento = 1; intento <= 5; intento++) {
+      await intentarLogin(client, usuario.username.toUpperCase(), CLAVE_ERRONEA, ip)
+    }
+
+    const resp = await intentarLogin(client, usuario.username, CLAVE_ERRONEA, ip)
+    resp.assertStatus(429)
+  })
+
+  test('un usuario inexistente también se limita', async ({ client }) => {
+    const username = `noexiste_${Date.now()}_${Math.floor(Math.random() * 1e6)}`
+    const ip = '203.0.113.12'
+
+    for (let intento = 1; intento <= 5; intento++) {
+      const resp = await intentarLogin(client, username, CLAVE_ERRONEA, ip)
+      resp.assertStatus(400)
+    }
+
+    const resp = await intentarLogin(client, username, CLAVE_ERRONEA, ip)
+    resp.assertStatus(429)
   })
 })

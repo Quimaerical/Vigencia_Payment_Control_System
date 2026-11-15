@@ -41,4 +41,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   CORS_VERCEL_PREVIEW_PREFIX: Env.schema.string.optional(),
   CORS_VERCEL_TEAM_SLUG: Env.schema.string.optional(),
   TRUSTED_PROXIES: Env.schema.string.optional(),
+
+  // Límite de intentos (ADR 0004): database en desarrollo/producción, memory en pruebas
+  LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const),
 })
