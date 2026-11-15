@@ -32,11 +32,15 @@ router.get('/', () => {
   return { hello: 'world' }
 })
 
+/** Todo /api/v1 pasa por el límite general por IP antes de autenticar (M4, ADR 0018). */
 router
   .group(() => {
     router
       .group(() => {
-        router.post('login', [SesionesController, 'login']).as('auth.login')
+        router
+          .post('login', [SesionesController, 'login'])
+          .as('auth.login')
+          .use(middleware.limitePeticiones({ ambito: 'login' }))
       })
       .prefix('auth')
 
@@ -176,3 +180,4 @@ router
       .use(middleware.auth())
   })
   .prefix('/api/v1')
+  .use(middleware.limitePeticiones({ ambito: 'api' }))

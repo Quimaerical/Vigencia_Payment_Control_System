@@ -42,7 +42,9 @@ router.use([
 /**
  * Named middleware collection must be explicitly assigned to
  * the routes or the routes group.
+ * `limitePeticiones`: límites por IP en login y en `/api/v1` (ADR 0018).
  */
 export const middleware = router.named({
   auth: () => import('#middleware/auth_middleware'),
+  limitePeticiones: () => import('#middleware/limite_peticiones_middleware'),
 })
