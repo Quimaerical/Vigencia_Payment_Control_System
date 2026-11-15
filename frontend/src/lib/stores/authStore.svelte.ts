@@ -4,20 +4,30 @@ import { workspaceStore } from './workspaceStore.svelte';
 import type { UsuarioDTO } from '../types/financial';
 import { RolUsuario } from '@app/shared';
 
-const DEFAULT_SEED_CREDENTIALS: Record<RolUsuario, { username: string; password: string }> = {
-	[RolUsuario.ADMINISTRADOR]: {
-		username: 'admin_sistema',
-		password: 'Vigencia$2026!SecureKey#99'
-	},
-	[RolUsuario.GENERADOR]: {
-		username: 'coordinador_generador',
-		password: 'Vigencia$2026!SecureKey#99'
-	},
-	[RolUsuario.RECEPTOR]: {
-		username: 'operador_receptor',
-		password: 'Vigencia$2026!SecureKey#99'
-	}
-};
+const AUTH_USER_SESSION_KEY = 'vigencia_auth_user';
+
+const SENSITIVE_STORAGE_KEYS = [
+	'auth_token',
+	'auth_user',
+	'current_role',
+	'cat_usuarios',
+	'cat_personas',
+	'cat_proyectos',
+	'cat_grupos_pago',
+	'cat_asignaciones',
+	'fin_proyectos',
+	'fin_kpis',
+	'fin_asientos',
+	'fin_asignaciones',
+	'fin_deudas_fifo',
+	'fin_audit_diffs',
+	'fin_deudas_raw',
+	'fin_solicitudes_pago',
+	'fin_pagos_raw',
+	'fin_resumen_reporte',
+	'fin_cajas_chicas',
+	'fin_last_sync'
+];
 
 class AuthStore {
 	usuarioActual = $state<UsuarioDTO | null>(null);
@@ -26,33 +36,54 @@ class AuthStore {
 	authError = $state<string | null>(null);
 
 	isAuthenticated = $derived(Boolean(this.token && this.usuarioActual));
-	esAdmin = $derived(
-		(this.usuarioActual?.rol ?? workspaceStore.currentRole) === RolUsuario.ADMINISTRADOR
-	);
-	esGenerador = $derived(
-		(this.usuarioActual?.rol ?? workspaceStore.currentRole) === RolUsuario.GENERADOR
-	);
-	esReceptor = $derived(
-		(this.usuarioActual?.rol ?? workspaceStore.currentRole) === RolUsuario.RECEPTOR
-	);
+	esAdmin = $derived(this.isAuthenticated && this.usuarioActual?.rol === RolUsuario.ADMINISTRADOR);
+	esGenerador = $derived(this.isAuthenticated && this.usuarioActual?.rol === RolUsuario.GENERADOR);
+	esReceptor = $derived(this.isAuthenticated && this.usuarioActual?.rol === RolUsuario.RECEPTOR);
 
 	private sessionListeners: Array<() => void> = [];
+	private logoutListeners: Array<() => void> = [];
 
 	constructor() {
 		this.token = ApiClient.getToken();
-		this.usuarioActual = StorageService.loadSnapshot<UsuarioDTO | null>('auth_user', null);
+		this.usuarioActual = this.loadSessionUser();
 		if (this.usuarioActual?.rol) {
 			workspaceStore.currentRole = this.usuarioActual.rol;
+		} else {
+			workspaceStore.currentRole = null;
 		}
 
 		ApiClient.onUnauthorized(() => {
 			this.clearLocalSession();
+			workspaceStore.loginModalOpen = true;
 			workspaceStore.showToast('Sesión expirada o no autorizada. Inicie sesión.', 'lock');
 		});
 	}
 
+	private loadSessionUser(): UsuarioDTO | null {
+		if (typeof window === 'undefined') return null;
+		try {
+			const raw = window.sessionStorage.getItem(AUTH_USER_SESSION_KEY);
+			return raw ? (JSON.parse(raw) as UsuarioDTO) : null;
+		} catch {
+			return null;
+		}
+	}
+
+	private saveSessionUser(user: UsuarioDTO | null): void {
+		if (typeof window === 'undefined') return;
+		if (user) {
+			window.sessionStorage.setItem(AUTH_USER_SESSION_KEY, JSON.stringify(user));
+		} else {
+			window.sessionStorage.removeItem(AUTH_USER_SESSION_KEY);
+		}
+	}
+
 	onSessionSync(listener: () => void) {
 		this.sessionListeners.push(listener);
+	}
+
+	onSessionClear(listener: () => void) {
+		this.logoutListeners.push(listener);
 	}
 
 	private notifySessionListeners() {
@@ -61,16 +92,29 @@ class AuthStore {
 		}
 	}
 
+	private notifyLogoutListeners() {
+		for (const fn of this.logoutListeners) {
+			fn();
+		}
+	}
+
 	private clearLocalSession() {
 		this.token = null;
 		this.usuarioActual = null;
 		ApiClient.setToken(null);
-		StorageService.removeSnapshot('auth_user');
+		this.saveSessionUser(null);
+		workspaceStore.setRole(null);
+
+		for (const key of SENSITIVE_STORAGE_KEYS) {
+			StorageService.removeSnapshot(key);
+		}
+		this.notifyLogoutListeners();
 	}
 
 	async initSession(): Promise<void> {
 		const savedToken = ApiClient.getToken();
 		if (!savedToken) {
+			this.clearLocalSession();
 			return;
 		}
 		this.isLoading = true;
@@ -80,8 +124,8 @@ class AuthStore {
 		if (res.data) {
 			this.usuarioActual = res.data;
 			this.token = savedToken;
-			StorageService.saveSnapshot('auth_user', res.data);
-			workspaceStore.currentRole = res.data.rol;
+			this.saveSessionUser(res.data);
+			workspaceStore.setRole(res.data.rol);
 			this.notifySessionListeners();
 		} else if (!res.isOffline) {
 			this.clearLocalSession();
@@ -104,7 +148,7 @@ class AuthStore {
 		this.token = res.data.token;
 		this.usuarioActual = res.data.user;
 		ApiClient.setToken(res.data.token);
-		StorageService.saveSnapshot('auth_user', res.data.user);
+		this.saveSessionUser(res.data.user);
 		workspaceStore.setRole(res.data.user.rol);
 		workspaceStore.loginModalOpen = false;
 		workspaceStore.showToast(
@@ -120,36 +164,8 @@ class AuthStore {
 			await ApiClient.logout();
 		}
 		this.clearLocalSession();
-		workspaceStore.showToast('Sesión cerrada exitosamente', 'logout');
-		this.notifySessionListeners();
-	}
-
-	/**
-	 * Permite cambiar de rol en la barra superior autenticando contra el usuario semilla
-	 * correspondiente en el backend, o aplicando el rol en modo offline si el backend está apagado.
-	 */
-	async switchRoleOrQuickLogin(rol: RolUsuario): Promise<void> {
-		const creds = DEFAULT_SEED_CREDENTIALS[rol];
-		if (!creds) {
-			workspaceStore.setRole(rol);
-			return;
-		}
-
-		const res = await ApiClient.login(creds);
-		if (res.data && res.data.token) {
-			this.token = res.data.token;
-			this.usuarioActual = res.data.user;
-			ApiClient.setToken(res.data.token);
-			StorageService.saveSnapshot('auth_user', res.data.user);
-			workspaceStore.setRole(res.data.user.rol);
-			this.notifySessionListeners();
-		} else {
-			// Modo offline o usuario semilla modificado: actualizar rol visual y notificar
-			workspaceStore.setRole(rol);
-			if (!res.isOffline && res.error) {
-				workspaceStore.showToast(`Login rápido (${creds.username}): ${res.error}`, 'info');
-			}
-		}
+		workspaceStore.loginModalOpen = true;
+		workspaceStore.showToast('Sesión cerrada y caché local limpiada', 'logout');
 	}
 }
 

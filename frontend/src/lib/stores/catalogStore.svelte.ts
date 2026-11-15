@@ -33,6 +33,14 @@ class CatalogStore {
 		this.proyectos = StorageService.loadSnapshot('cat_proyectos', []);
 		this.gruposPago = StorageService.loadSnapshot('cat_grupos_pago', []);
 		this.asignaciones = StorageService.loadSnapshot('cat_asignaciones', []);
+
+		authStore.onSessionClear(() => {
+			this.usuarios = [];
+			this.personas = [];
+			this.proyectos = [];
+			this.gruposPago = [];
+			this.asignaciones = [];
+		});
 	}
 
 	async syncAll(): Promise<void> {

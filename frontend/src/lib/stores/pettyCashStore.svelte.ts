@@ -1,6 +1,7 @@
 import { ApiClient } from '../services/apiClient';
 import { StorageService } from '../services/storageService';
 import { workspaceStore } from './workspaceStore.svelte';
+import { authStore } from './authStore.svelte';
 import type {
 	AbrirCajaChicaDTO,
 	CajaChicaDTO,
@@ -14,6 +15,9 @@ class PettyCashStore {
 
 	constructor() {
 		this.cajasChicas = StorageService.loadSnapshot('fin_cajas_chicas', []);
+		authStore.onSessionClear(() => {
+			this.cajasChicas = [];
+		});
 	}
 
 	async syncAll(proyectoId?: number): Promise<void> {

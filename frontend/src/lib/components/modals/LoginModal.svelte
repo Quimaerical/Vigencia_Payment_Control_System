@@ -1,20 +1,18 @@
 <script lang="ts">
 	import { authStore } from '../../stores/authStore.svelte';
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
-	import { RolUsuario } from '@app/shared';
 
-	let username = $state('admin_sistema');
-	let password = $state('Vigencia$2026!SecureKey#99');
+	let username = $state('');
+	let password = $state('');
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (!username.trim() || !password) return;
-		await authStore.login(username, password);
-	}
-
-	function fillSeed(user: string) {
-		username = user;
-		password = 'Vigencia$2026!SecureKey#99';
+		const ok = await authStore.login(username, password);
+		if (ok) {
+			username = '';
+			password = '';
+		}
 	}
 </script>
 
@@ -56,6 +54,8 @@
 					<input
 						id="login-username"
 						type="text"
+						placeholder="Ingrese su nombre de usuario"
+						autocomplete="username"
 						class="w-full rounded-lg border border-white/20 bg-neutral-900 px-3 py-1.5 font-mono text-white"
 						bind:value={username}
 						required
@@ -67,6 +67,8 @@
 					<input
 						id="login-password"
 						type="password"
+						placeholder="Ingrese su contraseña"
+						autocomplete="current-password"
 						class="w-full rounded-lg border border-white/20 bg-neutral-900 px-3 py-1.5 font-mono text-white"
 						bind:value={password}
 						required
@@ -78,35 +80,6 @@
 						{authStore.authError}
 					</p>
 				{/if}
-
-				<div class="space-y-1 pt-1">
-					<span class="block text-[10px] text-neutral-400"
-						>Autocompletar usuarios de prueba (Seeder):</span
-					>
-					<div class="flex flex-wrap gap-1.5">
-						<button
-							type="button"
-							class="rounded border border-white/15 bg-white/5 px-2 py-1 font-mono text-[10px] hover:bg-white/10"
-							onclick={() => fillSeed('admin_sistema')}
-						>
-							admin_sistema ({RolUsuario.ADMINISTRADOR})
-						</button>
-						<button
-							type="button"
-							class="rounded border border-white/15 bg-white/5 px-2 py-1 font-mono text-[10px] hover:bg-white/10"
-							onclick={() => fillSeed('coordinador_generador')}
-						>
-							coordinador_generador ({RolUsuario.GENERADOR})
-						</button>
-						<button
-							type="button"
-							class="rounded border border-white/15 bg-white/5 px-2 py-1 font-mono text-[10px] hover:bg-white/10"
-							onclick={() => fillSeed('operador_receptor')}
-						>
-							operador_receptor ({RolUsuario.RECEPTOR})
-						</button>
-					</div>
-				</div>
 
 				<div class="flex justify-end gap-2 border-t border-white/10 pt-3">
 					<button

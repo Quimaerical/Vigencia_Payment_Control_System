@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { financialStore } from '../../stores/financialStore.svelte';
+	import { authStore } from '../../stores/authStore.svelte';
 
 	let searchQuery = $state('');
 	let filterStatus = $state<'todos' | 'asentado' | 'anulado'>('todos');
@@ -135,7 +136,7 @@
 							: 'border-white/10'} flex flex-wrap items-center justify-between gap-2"
 					>
 						<span class="font-mono text-[10px] text-neutral-400">
-							Hash: <code class="opacity-75">{asiento.hashSha256.substring(0, 8)}...</code>
+							Registro: <code>{asiento.id}</code>
 						</span>
 						<div class="flex items-center gap-1.5">
 							{#if asiento.pagoId}
@@ -149,7 +150,7 @@
 									<span>Recibo PDF</span>
 								</button>
 							{/if}
-							{#if asiento.estado !== 'anulado'}
+							{#if asiento.estado !== 'anulado' && authStore.esReceptor}
 								<button
 									class="flex items-center gap-1 rounded-lg border border-rose-500/20 bg-rose-500/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-rose-300 transition-all hover:bg-rose-500/25 active:scale-95"
 									onclick={() =>
@@ -162,6 +163,10 @@
 						</div>
 					</div>
 				</div>
+			{:else}
+				<p class="text-center font-mono text-[11px] text-neutral-400">
+					No hay asientos registrados para mostrar.
+				</p>
 			{/each}
 		</div>
 	</div>

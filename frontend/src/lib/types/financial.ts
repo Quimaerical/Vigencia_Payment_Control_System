@@ -48,7 +48,7 @@ export interface KPIsFinancieros {
 }
 
 export interface AsientoMayor {
-	id: string; // e.g. '#AST-8832'
+	id: string; // e.g. '#PAGO-12'
 	pagoId?: number;
 	timestamp: string;
 	concepto: string;
@@ -56,7 +56,7 @@ export interface AsientoMayor {
 	proyectoCodigo: string;
 	montoUsd: number;
 	estado: 'asentado' | 'anulado';
-	hashSha256: string;
+	hashSha256?: string;
 	motivoReverso?: string;
 }
 
@@ -98,7 +98,8 @@ export interface AuditDiffItem {
 	usuarioId: string;
 	usuarioRol: RolUsuario;
 	timestamp: string;
-	hashSha256: string;
+	ipOrigen?: string | null;
+	hashSha256?: string;
 	datosAnteriores: Record<string, unknown> | null;
 	datosNuevos: Record<string, unknown>;
 }

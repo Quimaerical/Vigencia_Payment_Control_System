@@ -3,6 +3,7 @@
 	import { catalogStore } from '../../stores/catalogStore.svelte';
 	import { financialStore } from '../../stores/financialStore.svelte';
 	import { authStore } from '../../stores/authStore.svelte';
+	import { workspaceStore } from '../../stores/workspaceStore.svelte';
 	import { EstadoCajaChica, EstadoValeCaja } from '@app/shared';
 
 	// Apertura mensual de Caja Chica
@@ -83,7 +84,7 @@
 		const monto = rendirMontoMap[valeId] ?? montoSolicitado;
 		const comp = (rendirComprobanteMap[valeId] || '').trim();
 		if (!comp) {
-			alert('Ingrese la referencia del comprobante de rendición.');
+			workspaceStore.showToast('Ingrese la referencia del comprobante de rendición.', 'warning');
 			return;
 		}
 		const ok = await pettyCashStore.rendirVale(valeId, {
@@ -266,10 +267,10 @@
 			</div>
 			<button
 				type="submit"
-				disabled={authStore.esAdmin}
+				disabled={!authStore.esGenerador}
 				class="col-span-2 rounded-lg bg-amber-400 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 			>
-				+ Solicitar Vale de Caja {authStore.esAdmin ? '(No permitido para Administrador)' : ''}
+				+ Solicitar Vale de Caja {authStore.esGenerador ? '' : '(Requiere rol Generador)'}
 			</button>
 		</form>
 
@@ -301,7 +302,7 @@
 									Estado: {caja.estado}
 								</span>
 							</div>
-							{#if caja.estado === EstadoCajaChica.ABIERTA && !authStore.esAdmin}
+							{#if caja.estado === EstadoCajaChica.ABIERTA && (authStore.esGenerador || authStore.esReceptor)}
 								<button
 									type="button"
 									class="rounded border border-amber-400/40 bg-amber-500/20 px-2 py-1 font-mono text-[10px] text-amber-200"

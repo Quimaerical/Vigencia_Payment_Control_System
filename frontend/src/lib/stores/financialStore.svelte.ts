@@ -4,14 +4,6 @@ import { workspaceStore } from './workspaceStore.svelte';
 import { authStore } from './authStore.svelte';
 import { catalogStore } from './catalogStore.svelte';
 import { pettyCashStore } from './pettyCashStore.svelte';
-import {
-	MOCK_PROYECTOS,
-	MOCK_KPIS,
-	MOCK_ASIENTOS_MAYOR,
-	MOCK_ASIGNACIONES,
-	MOCK_DEUDAS_FIFO,
-	MOCK_AUDIT_DIFFS
-} from '../services/mockData';
 import type {
 	Proyecto,
 	KPIsFinancieros,
@@ -29,9 +21,20 @@ import type {
 } from '../types/financial';
 import { EstadoDeuda, EstadoPago, MetodoPago, RolUsuario } from '@app/shared';
 
+const EMPTY_KPIS: KPIsFinancieros = {
+	totalCausado: 0,
+	porcentajeCausadoVsPrev: 0,
+	totalPagado: 0,
+	porcentajeCubierto: 0,
+	saldoExigible: 0,
+	pasivosFifoCount: 0,
+	cajaChicaSaldo: 0,
+	valesCustodiaCount: 0
+};
+
 class FinancialStore {
 	proyectos = $state<Proyecto[]>([]);
-	kpis = $state<KPIsFinancieros>(MOCK_KPIS);
+	kpis = $state<KPIsFinancieros>({ ...EMPTY_KPIS });
 	asientos = $state<AsientoMayor[]>([]);
 	asignaciones = $state<AsignacionTramite[]>([]);
 	deudasFifo = $state<DeudaFifoItem[]>([]);
@@ -58,15 +61,40 @@ class FinancialStore {
 		authStore.onSessionSync(() => {
 			void this.syncFromBackend();
 		});
+		authStore.onSessionClear(() => {
+			this.resetState();
+		});
+	}
+
+	private resetState() {
+		this.proyectos = [];
+		this.kpis = { ...EMPTY_KPIS };
+		this.asientos = [];
+		this.asignaciones = [];
+		this.deudasFifo = [];
+		this.auditDiffs = [];
+		this.deudasRaw = [];
+		this.solicitudesPago = [];
+		this.pagosRaw = [];
+		this.resumenReporte = null;
+		this.isOffline = false;
+		this.voidModalOpen = false;
+		this.selectedAsiento = null;
+		this.fifoModalOpen = false;
+		this.selectedDeudaForPayment = null;
 	}
 
 	private init() {
-		this.proyectos = StorageService.loadSnapshot('fin_proyectos', MOCK_PROYECTOS);
-		this.kpis = StorageService.loadSnapshot('fin_kpis', MOCK_KPIS);
-		this.asientos = StorageService.loadSnapshot('fin_asientos', MOCK_ASIENTOS_MAYOR);
-		this.asignaciones = StorageService.loadSnapshot('fin_asignaciones', MOCK_ASIGNACIONES);
-		this.deudasFifo = StorageService.loadSnapshot('fin_deudas_fifo', MOCK_DEUDAS_FIFO);
-		this.auditDiffs = StorageService.loadSnapshot('fin_audit_diffs', MOCK_AUDIT_DIFFS);
+		if (!ApiClient.getToken()) {
+			this.resetState();
+			return;
+		}
+		this.proyectos = StorageService.loadSnapshot('fin_proyectos', []);
+		this.kpis = StorageService.loadSnapshot('fin_kpis', { ...EMPTY_KPIS });
+		this.asientos = StorageService.loadSnapshot('fin_asientos', []);
+		this.asignaciones = StorageService.loadSnapshot('fin_asignaciones', []);
+		this.deudasFifo = StorageService.loadSnapshot('fin_deudas_fifo', []);
+		this.auditDiffs = StorageService.loadSnapshot('fin_audit_diffs', []);
 		this.deudasRaw = StorageService.loadSnapshot('fin_deudas_raw', []);
 		this.solicitudesPago = StorageService.loadSnapshot('fin_solicitudes_pago', []);
 		this.pagosRaw = StorageService.loadSnapshot('fin_pagos_raw', []);
@@ -88,10 +116,10 @@ class FinancialStore {
 			ApiClient.obtenerResumenReporte(),
 			ApiClient.listarCausaciones(),
 			ApiClient.listarSolicitudesPago(),
-			ApiClient.listarPagos(),
-			catalogStore.syncAll(),
-			pettyCashStore.syncAll()
+			ApiClient.listarPagos()
 		]);
+
+		await Promise.all([catalogStore.syncAll(), pettyCashStore.syncAll()]);
 
 		if (resumenRes.isOffline || causacionesRes.isOffline) {
 			this.isOffline = true;
@@ -105,7 +133,7 @@ class FinancialStore {
 			this.resumenReporte = resumenRes.data;
 			this.kpis = {
 				totalCausado: Number(resumenRes.data.kpis.totalCausado ?? 0),
-				porcentajeCausadoVsPrev: this.kpis.porcentajeCausadoVsPrev || 100,
+				porcentajeCausadoVsPrev: Number(resumenRes.data.kpis.porcentajeCubierto ?? 0),
 				totalPagado: Number(resumenRes.data.kpis.totalPagado ?? 0),
 				porcentajeCubierto: Number(resumenRes.data.kpis.porcentajeCubierto ?? 0),
 				saldoExigible: Number(resumenRes.data.kpis.saldoExigible ?? 0),
@@ -129,7 +157,7 @@ class FinancialStore {
 						ambito: p.ambito,
 						fechaInicio: p.fechaInicio,
 						fechaFin: p.fechaFin,
-						presupuestoUsd: causado > 0 ? causado : 1000,
+						presupuestoUsd: causado,
 						porcentajeEjecucion: ejecucion,
 						estaActivo: p.estaActivo
 					};
@@ -140,7 +168,6 @@ class FinancialStore {
 		if (causacionesRes.data?.data) {
 			this.deudasRaw = causacionesRes.data.data;
 
-			// Mapear a AsignacionTramite y DeudaFifoItem para las vistas existentes
 			const activas = this.deudasRaw.filter((d) => d.estado !== EstadoDeuda.ANULADA);
 			this.asignaciones = activas.map((d) => {
 				const nombres = d.persona
@@ -228,7 +255,6 @@ class FinancialStore {
 					proyectoCodigo: proyCod,
 					montoUsd: Number(p.montoTotal),
 					estado: p.estado === EstadoPago.ANULADO ? 'anulado' : 'asentado',
-					hashSha256: `sha256_pago_${p.id}_${p.metodoPago}`,
 					motivoReverso: p.motivoAnulacion ?? undefined
 				};
 			});
@@ -245,18 +271,19 @@ class FinancialStore {
 					usuarioId: log.usuario?.username ?? (log.usuarioId ? `usr_${log.usuarioId}` : 'sistema'),
 					usuarioRol: log.usuario?.rol ?? RolUsuario.ADMINISTRADOR,
 					timestamp: String(log.creadoEn).replace('T', ' ').substring(0, 19),
-					hashSha256: `audit_${log.id}_${log.tablaAfectada}_${log.registroId}`,
+					ipOrigen: log.ipOrigen ?? null,
 					datosAnteriores: log.datosAnteriores,
 					datosNuevos: log.datosNuevos ?? {}
 				}));
 			}
+		} else {
+			this.auditDiffs = [];
 		}
 
 		this.persist();
 		this.isSyncing = false;
 	}
 
-	// Calculadora de prorrateo local e integración con simulador backend
 	calcularProrrateo(diasActivos: number, diasPeriodo: number, baseUsd: number): number {
 		if (diasPeriodo <= 0 || diasActivos <= 0 || baseUsd <= 0) return 0;
 		const ratio = Math.min(diasActivos, diasPeriodo) / diasPeriodo;
@@ -297,7 +324,6 @@ class FinancialStore {
 		return true;
 	}
 
-	// Ciclo de Solicitudes de Pago
 	async crearSolicitudPago(dto: CrearSolicitudPagoDTO): Promise<boolean> {
 		const res = await ApiClient.crearSolicitudPago(dto);
 		if (!res.data) {
@@ -353,158 +379,81 @@ class FinancialStore {
 		return true;
 	}
 
-	// Anulación justificada de asiento/pago del Libro Mayor
+	/**
+	 * Anulación justificada de pago: exclusivamente server-side (sin mutaciones ficticias offline).
+	 */
 	async anularAsiento(asientoId: string, motivo: string): Promise<boolean> {
+		if (!ApiClient.getToken() || !authStore.isAuthenticated) {
+			workspaceStore.showToast('Debe iniciar sesión para anular un pago.', 'lock');
+			return false;
+		}
+
 		const target = this.asientos.find((a) => a.id === asientoId);
 		const pagoId =
 			target?.pagoId ??
 			(asientoId.startsWith('#PAGO-') ? Number(asientoId.replace('#PAGO-', '')) : null);
 
-		if (pagoId && ApiClient.getToken()) {
-			const res = await ApiClient.anularPago(pagoId, motivo);
-			if (!res.isOffline) {
-				if (!res.data) {
-					workspaceStore.showToast(res.error || 'Error al anular el pago', 'warning');
-					return false;
-				}
-				workspaceStore.showToast(
-					`${res.data.mensaje} ($${res.data.montoRevertido.toFixed(2)} USD revertidos)`,
-					'done_all'
-				);
-				await this.syncFromBackend();
-				return true;
-			}
+		if (!pagoId) {
+			workspaceStore.showToast(
+				'El registro seleccionado no corresponde a un pago persistido en servidor.',
+				'warning'
+			);
+			return false;
 		}
 
-		// Fallback local si estamos en modo offline sin conexión a BD
-		if (!target) return false;
-		target.estado = 'anulado';
-		target.motivoReverso = motivo;
+		const res = await ApiClient.anularPago(pagoId, motivo);
+		if (res.isOffline) {
+			this.isOffline = true;
+			workspaceStore.showToast(
+				'Operación bloqueada: anular un pago requiere conexión activa con el servidor.',
+				'cloud_off'
+			);
+			return false;
+		}
 
-		const newAudit: AuditDiffItem = {
-			id: Date.now(),
-			accion: 'ANULAR_ASIENTO_REVERSO',
-			tablaAfectada: 'libro_mayor',
-			registroId: Math.floor(Math.random() * 1000),
-			usuarioId: authStore.usuarioActual?.username ?? 'usr_actual',
-			usuarioRol: workspaceStore.currentRole,
-			timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
-			hashSha256: Math.random().toString(36).substring(2, 15),
-			datosAnteriores: {
-				asiento_id: target.id,
-				estado: 'asentado',
-				monto_usd: target.montoUsd
-			},
-			datosNuevos: {
-				asiento_id: target.id,
-				estado: 'anulado',
-				motivo_reverso: motivo,
-				reversado_en: new Date().toISOString()
-			}
-		};
+		if (!res.data) {
+			workspaceStore.showToast(res.error || 'Error al anular el pago', 'warning');
+			return false;
+		}
 
-		this.auditDiffs.unshift(newAudit);
-		this.persist();
 		workspaceStore.showToast(
-			`Asiento ${asientoId} anulado en caché local (Modo Offline)`,
+			`${res.data.mensaje} ($${res.data.montoRevertido.toFixed(2)} USD revertidos)`,
 			'done_all'
 		);
+		await this.syncFromBackend();
 		return true;
 	}
 
-	// Ejecución de pago FIFO conectado al backend con fallback offline
-	async procesarPagoFifo(dto: ProcesarPagoDTO, fallbackDeudaId?: number): Promise<boolean> {
-		if (ApiClient.getToken()) {
-			const res = await ApiClient.procesarPago(dto);
-			if (!res.isOffline) {
-				if (!res.data) {
-					workspaceStore.showToast(res.error || 'Error al procesar pago FIFO', 'warning');
-					return false;
-				}
-				workspaceStore.showToast(
-					`Pago #${res.data.pagoId} registrado: $${res.data.montoAplicado.toFixed(2)} USD (${res.data.deudasAmortizadas} deudas amortizadas)`,
-					'verified'
-				);
-				await this.syncFromBackend();
-				return true;
-			}
+	/**
+	 * Ejecución de pago FIFO: exclusivamente server-side (sin mutaciones ficticias offline).
+	 */
+	async procesarPagoFifo(dto: ProcesarPagoDTO): Promise<boolean> {
+		if (!ApiClient.getToken() || !authStore.isAuthenticated) {
+			workspaceStore.showToast('Debe iniciar sesión como Receptor para procesar pagos.', 'lock');
+			return false;
 		}
 
-		// Modo Offline
-		if (fallbackDeudaId !== undefined) {
-			this.registrarAmortizacionLocal(fallbackDeudaId, dto.montoTotal);
+		const res = await ApiClient.procesarPago(dto);
+		if (res.isOffline) {
+			this.isOffline = true;
 			workspaceStore.showToast(
-				`Desembolso FIFO aplicado en caché offline: $${dto.montoTotal.toFixed(2)} USD`,
-				'verified'
+				'Operación bloqueada: registrar pagos FIFO requiere conexión activa con el servidor.',
+				'cloud_off'
 			);
-			return true;
-		}
-		return false;
-	}
-
-	// Ejecución de amortización FIFO local (usado en modo offline)
-	registrarAmortizacionLocal(deudaId: number, montoAAplicar: number) {
-		const targetDeuda = this.deudasFifo.find((d) => d.id === deudaId);
-		if (!targetDeuda) return;
-
-		const saldoAnterior = targetDeuda.saldoPendiente;
-		const nuevoSaldo = Number(Math.max(0, saldoAnterior - montoAAplicar).toFixed(2));
-		targetDeuda.saldoPendiente = nuevoSaldo;
-		targetDeuda.montoAmortizado = Number((targetDeuda.montoAmortizado + montoAAplicar).toFixed(2));
-		targetDeuda.porcentajeAmortizado = Number(
-			((targetDeuda.montoAmortizado / targetDeuda.montoOriginal) * 100).toFixed(0)
-		);
-
-		if (nuevoSaldo === 0) {
-			targetDeuda.estado = 'liquidada';
-		} else {
-			targetDeuda.estado = 'abonado';
+			return false;
 		}
 
-		// Actualizar KPIs
-		this.kpis.totalPagado = Number((this.kpis.totalPagado + montoAAplicar).toFixed(2));
-		this.kpis.saldoExigible = Number(
-			Math.max(0, this.kpis.saldoExigible - montoAAplicar).toFixed(2)
+		if (!res.data) {
+			workspaceStore.showToast(res.error || 'Error al procesar pago FIFO', 'warning');
+			return false;
+		}
+
+		workspaceStore.showToast(
+			`Pago #${res.data.pagoId} registrado: $${res.data.montoAplicado.toFixed(2)} USD (${res.data.deudasAmortizadas} deudas amortizadas)`,
+			'verified'
 		);
-		this.kpis.porcentajeCubierto =
-			this.kpis.totalCausado > 0
-				? Number(((this.kpis.totalPagado / this.kpis.totalCausado) * 100).toFixed(1))
-				: 0;
-
-		const nuevoAsiento: AsientoMayor = {
-			id: `#AST-${Math.floor(1000 + Math.random() * 9000)}`,
-			timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
-			concepto: `Amortización FIFO Deuda #${targetDeuda.id}`,
-			beneficiarioNombre: targetDeuda.beneficiarioNombre || 'Beneficiario Activo',
-			proyectoCodigo: targetDeuda.proyectoCodigo || 'PROY-01',
-			montoUsd: montoAAplicar,
-			estado: 'asentado',
-			hashSha256: Math.random().toString(36).substring(2, 15)
-		};
-		this.asientos.unshift(nuevoAsiento);
-
-		const newAudit: AuditDiffItem = {
-			id: Date.now(),
-			accion: 'AMORTIZAR_DEUDA_FIFO',
-			tablaAfectada: 'deudas',
-			registroId: targetDeuda.id,
-			usuarioId: authStore.usuarioActual?.username || 'usr_receptor',
-			usuarioRol: RolUsuario.RECEPTOR,
-			timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
-			hashSha256: Math.random().toString(36).substring(2, 15),
-			datosAnteriores: {
-				deuda_id: targetDeuda.id,
-				saldo_pendiente: saldoAnterior
-			},
-			datosNuevos: {
-				deuda_id: targetDeuda.id,
-				saldo_pendiente: nuevoSaldo,
-				monto_aplicado: montoAAplicar
-			}
-		};
-		this.auditDiffs.unshift(newAudit);
-
-		this.persist();
+		await this.syncFromBackend();
+		return true;
 	}
 
 	async descargarReciboPagoPdf(pagoId: number) {

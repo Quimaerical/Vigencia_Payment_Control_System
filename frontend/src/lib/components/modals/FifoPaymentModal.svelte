@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { financialStore } from '../../stores/financialStore.svelte';
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
+	import { authStore } from '../../stores/authStore.svelte';
 	import { EstadoSolicitud, MetodoPago } from '@app/shared';
 
 	let montoPagar = $state(0);
@@ -20,39 +21,60 @@
 	);
 
 	$effect(() => {
-		if (financialStore.selectedDeudaForPayment) {
-			montoPagar = financialStore.selectedDeudaForPayment.saldoPendiente;
-			solicitudId = financialStore.selectedDeudaForPayment.solicitudId ?? null;
+		const deuda = financialStore.selectedDeudaForPayment;
+		if (deuda) {
+			montoPagar = deuda.saldoPendiente;
+			const elegibles = financialStore.solicitudesPago.filter(
+				(s) =>
+					s.proyectoId === deuda.proyectoId &&
+					(s.estado === EstadoSolicitud.APROBACION || s.estado === EstadoSolicitud.ENTREGA)
+			);
+			solicitudId = elegibles.some((s) => s.id === deuda.solicitudId)
+				? (deuda.solicitudId ?? null)
+				: null;
 		}
 	});
 
 	async function handlePagar() {
+		if (!authStore.esReceptor) {
+			workspaceStore.showToast(
+				'Segregación RBAC: Solo el rol Receptor puede registrar desembolsos FIFO.',
+				'lock'
+			);
+			return;
+		}
+
+		const deuda = financialStore.selectedDeudaForPayment;
+		if (!deuda) return;
+
 		if (montoPagar <= 0) {
 			workspaceStore.showToast('El monto debe ser superior a 0.00 USD', 'warning');
 			return;
 		}
 
-		if (financialStore.selectedDeudaForPayment) {
-			const deuda = financialStore.selectedDeudaForPayment;
-			isSubmitting = true;
-			const ok = await financialStore.procesarPagoFifo(
-				{
-					personaId: deuda.personaId,
-					proyectoId: deuda.proyectoId,
-					solicitudId: solicitudId ? Number(solicitudId) : null,
-					montoTotal: Number(montoPagar),
-					metodoPago: metodoSeleccionado,
-					numeroReferencia: referencia.trim() ? referencia.trim() : null,
-					fechaPago
-				},
-				deuda.id
+		if (montoPagar > deuda.saldoPendiente) {
+			workspaceStore.showToast(
+				`El monto no puede superar el saldo pendiente de la deuda ($${deuda.saldoPendiente.toFixed(2)} USD)`,
+				'warning'
 			);
-			isSubmitting = false;
+			return;
+		}
 
-			if (ok) {
-				referencia = '';
-				financialStore.closeFifoPaymentModal();
-			}
+		isSubmitting = true;
+		const ok = await financialStore.procesarPagoFifo({
+			personaId: deuda.personaId,
+			proyectoId: deuda.proyectoId,
+			solicitudId: solicitudId ? Number(solicitudId) : null,
+			montoTotal: Number(montoPagar),
+			metodoPago: metodoSeleccionado,
+			numeroReferencia: referencia.trim() ? referencia.trim() : null,
+			fechaPago
+		});
+		isSubmitting = false;
+
+		if (ok) {
+			referencia = '';
+			financialStore.closeFifoPaymentModal();
 		}
 	}
 </script>
@@ -95,7 +117,9 @@
 						for="modal-monto-amortizar"
 						class="mb-0.5 block font-mono text-[10px] text-neutral-400"
 					>
-						Monto a Amortizar (USD)
+						Monto a Amortizar (Máx. ${financialStore.selectedDeudaForPayment.saldoPendiente.toFixed(
+							2
+						)} USD)
 					</label>
 					<input
 						id="modal-monto-amortizar"
@@ -103,6 +127,7 @@
 						type="number"
 						bind:value={montoPagar}
 						min="0.01"
+						max={financialStore.selectedDeudaForPayment.saldoPendiente}
 						step="0.01"
 					/>
 				</div>
@@ -184,7 +209,7 @@
 					Cancelar
 				</button>
 				<button
-					disabled={isSubmitting}
+					disabled={isSubmitting || !authStore.esReceptor}
 					class="flex items-center gap-1 rounded-xl bg-gradient-to-r from-teal-500 to-mint-400 px-3.5 py-1.5 font-bold text-neutral-950 shadow-md shadow-teal-500/20 transition-all active:scale-95 disabled:opacity-50"
 					onclick={handlePagar}
 				>

@@ -1,4 +1,3 @@
-import { StorageService } from './storageService';
 import type {
 	AbrirCajaChicaDTO,
 	ActualizarAsignacionDTO,
@@ -63,14 +62,16 @@ export class ApiClient {
 	}
 
 	public static getToken(): string | null {
-		return StorageService.loadSnapshot<string | null>('auth_token', null);
+		if (typeof window === 'undefined') return null;
+		return window.sessionStorage.getItem('vigencia_auth_token');
 	}
 
 	public static setToken(token: string | null): void {
+		if (typeof window === 'undefined') return;
 		if (token) {
-			StorageService.saveSnapshot('auth_token', token);
+			window.sessionStorage.setItem('vigencia_auth_token', token);
 		} else {
-			StorageService.removeSnapshot('auth_token');
+			window.sessionStorage.removeItem('vigencia_auth_token');
 		}
 	}
 

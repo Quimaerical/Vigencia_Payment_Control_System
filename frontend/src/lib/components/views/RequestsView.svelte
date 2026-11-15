@@ -2,6 +2,7 @@
 	import { financialStore } from '../../stores/financialStore.svelte';
 	import { catalogStore } from '../../stores/catalogStore.svelte';
 	import { authStore } from '../../stores/authStore.svelte';
+	import { workspaceStore } from '../../stores/workspaceStore.svelte';
 	import { EstadoDeuda, EstadoSolicitud } from '@app/shared';
 
 	let solCodigo = $state(
@@ -61,7 +62,7 @@
 	async function handleRechazar(solicitudId: number) {
 		const motivo = (motivoRechazoMap[solicitudId] || '').trim();
 		if (motivo.length < 5) {
-			alert('Ingrese un motivo de rechazo de al menos 5 caracteres.');
+			workspaceStore.showToast('Ingrese un motivo de rechazo de al menos 5 caracteres.', 'warning');
 			return;
 		}
 		const ok = await financialStore.rechazarSolicitudPago(solicitudId, motivo);
@@ -285,7 +286,7 @@
 								</button>
 							{/if}
 
-							{#if (sol.estado === EstadoSolicitud.APROBACION || sol.estado === EstadoSolicitud.ENTREGA) && !authStore.esAdmin}
+							{#if (sol.estado === EstadoSolicitud.APROBACION || sol.estado === EstadoSolicitud.ENTREGA) && (authStore.esGenerador || authStore.esReceptor)}
 								<button
 									type="button"
 									class="rounded border border-white/25 bg-white/10 px-2.5 py-1 font-mono text-[10px] hover:bg-white/20"

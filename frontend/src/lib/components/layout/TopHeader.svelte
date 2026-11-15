@@ -2,7 +2,6 @@
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
 	import { financialStore } from '../../stores/financialStore.svelte';
 	import { authStore } from '../../stores/authStore.svelte';
-	import { RolUsuario } from '@app/shared';
 
 	let activeProject = $derived(
 		financialStore.proyectos.find((p) => p.id === workspaceStore.activeProjectId) ||
@@ -54,7 +53,7 @@
 					{authStore.isAuthenticated ? 'verified_user' : 'login'}
 				</span>
 				<span>
-					{authStore.usuarioActual ? authStore.usuarioActual.username : 'Login'}
+					{authStore.usuarioActual ? authStore.usuarioActual.username : 'Iniciar Sesión'}
 				</span>
 			</button>
 
@@ -94,38 +93,33 @@
 		</div>
 	</div>
 
-	<!-- Active Role Switcher Pill Bar & Project Selector -->
+	<!-- Authenticated Role Indicator & Project Selector -->
 	<div
 		class="mt-2.5 flex items-center justify-between gap-2 border-t border-white/10 pt-2 text-[11px]"
 	>
-		<div class="flex items-center gap-0.5 rounded-lg border border-white/15 bg-black/60 p-0.5">
-			<button
-				class="rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold transition-all {workspaceStore.currentRole ===
-				RolUsuario.ADMINISTRADOR
-					? 'bg-teal-500 text-neutral-950 shadow-[0_0_10px_rgba(20,184,166,0.4)]'
-					: 'text-neutral-400 hover:text-teal-300'}"
-				onclick={() => authStore.switchRoleOrQuickLogin(RolUsuario.ADMINISTRADOR)}
-			>
-				Admin
-			</button>
-			<button
-				class="rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold transition-all {workspaceStore.currentRole ===
-				RolUsuario.GENERADOR
-					? 'bg-teal-500 text-neutral-950 shadow-[0_0_10px_rgba(20,184,166,0.4)]'
-					: 'text-neutral-400 hover:text-teal-300'}"
-				onclick={() => authStore.switchRoleOrQuickLogin(RolUsuario.GENERADOR)}
-			>
-				Generador
-			</button>
-			<button
-				class="rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold transition-all {workspaceStore.currentRole ===
-				RolUsuario.RECEPTOR
-					? 'bg-teal-500 text-neutral-950 shadow-[0_0_10px_rgba(20,184,166,0.4)]'
-					: 'text-neutral-400 hover:text-teal-300'}"
-				onclick={() => authStore.switchRoleOrQuickLogin(RolUsuario.RECEPTOR)}
-			>
-				Tesorero
-			</button>
+		<div class="flex items-center gap-2">
+			{#if authStore.isAuthenticated && authStore.usuarioActual}
+				<span
+					class="rounded-md border border-teal-400/30 bg-teal-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-teal-300 uppercase"
+				>
+					Rol: {authStore.usuarioActual.rol}
+				</span>
+				<button
+					type="button"
+					class="rounded-md border border-white/15 bg-white/5 px-2 py-0.5 font-mono text-[10px] text-neutral-300 hover:bg-white/10"
+					onclick={() => (workspaceStore.loginModalOpen = true)}
+				>
+					Cambiar cuenta
+				</button>
+			{:else}
+				<button
+					type="button"
+					class="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-amber-300"
+					onclick={() => (workspaceStore.loginModalOpen = true)}
+				>
+					Sin sesión activa — Autenticar
+				</button>
+			{/if}
 		</div>
 
 		<select

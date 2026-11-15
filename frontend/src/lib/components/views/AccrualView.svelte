@@ -274,7 +274,7 @@
 						</div>
 					</div>
 
-					{#if asig.deudaId && asig.estado === 'pendiente' && !authStore.esAdmin}
+					{#if asig.deudaId && asig.estado === 'pendiente' && authStore.esGenerador}
 						<div
 							class="flex items-center justify-end gap-1.5 border-t border-white/10 pt-1.5 text-[10px]"
 						>

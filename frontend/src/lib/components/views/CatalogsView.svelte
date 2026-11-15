@@ -213,7 +213,9 @@
 				class="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3"
 				onsubmit={handleCrearProyecto}
 			>
-				<div class="col-span-2 font-bold text-teal-300">Nuevo Proyecto (Admin / Generador)</div>
+				<div class="col-span-2 font-bold text-teal-300">
+					Nuevo Proyecto (Exclusivo Rol Generador)
+				</div>
 				<input
 					type="text"
 					placeholder="Código (ej. PROY-FQ-02)"
@@ -273,9 +275,10 @@
 				/>
 				<button
 					type="submit"
-					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950"
+					disabled={!authStore.esGenerador}
+					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 				>
-					+ Registrar Proyecto
+					+ Registrar Proyecto {authStore.esGenerador ? '' : '(Requiere rol Generador)'}
 				</button>
 			</form>
 
@@ -294,7 +297,8 @@
 						</div>
 						<button
 							type="button"
-							class="rounded border px-2 py-1 font-mono text-[10px] {p.estaActivo
+							disabled={!authStore.esGenerador}
+							class="rounded border px-2 py-1 font-mono text-[10px] disabled:opacity-40 {p.estaActivo
 								? 'border-emerald-500/40 text-emerald-300'
 								: 'border-rose-500/40 text-rose-300'}"
 							onclick={() => catalogStore.cambiarEstadoProyecto(p.id, !p.estaActivo)}
@@ -346,9 +350,10 @@
 				/>
 				<button
 					type="submit"
-					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950"
+					disabled={!authStore.esGenerador}
+					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 				>
-					+ Registrar Persona Beneficiaria
+					+ Registrar Persona Beneficiaria {authStore.esGenerador ? '' : '(Requiere rol Generador)'}
 				</button>
 			</form>
 
@@ -363,7 +368,8 @@
 						</div>
 						<button
 							type="button"
-							class="rounded border px-2 py-1 font-mono text-[10px] {per.estaActivo
+							disabled={!authStore.esGenerador}
+							class="rounded border px-2 py-1 font-mono text-[10px] disabled:opacity-40 {per.estaActivo
 								? 'border-emerald-500/40 text-emerald-300'
 								: 'border-rose-500/40 text-rose-300'}"
 							onclick={() => catalogStore.cambiarEstadoPersona(per.id, !per.estaActivo)}
@@ -433,9 +439,10 @@
 				/>
 				<button
 					type="submit"
-					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950"
+					disabled={!authStore.esAdmin}
+					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 				>
-					+ Crear Grupo de Pago
+					+ Crear Grupo de Pago {authStore.esAdmin ? '' : '(Requiere rol Administrador)'}
 				</button>
 			</form>
 
@@ -453,7 +460,8 @@
 						</div>
 						<button
 							type="button"
-							class="rounded border px-2 py-1 font-mono text-[10px] {g.estaActivo
+							disabled={!authStore.esAdmin}
+							class="rounded border px-2 py-1 font-mono text-[10px] disabled:opacity-40 {g.estaActivo
 								? 'border-emerald-500/40 text-emerald-300'
 								: 'border-rose-500/40 text-rose-300'}"
 							onclick={() => catalogStore.cambiarEstadoGrupoPago(g.id, !g.estaActivo)}
@@ -549,9 +557,10 @@
 				</div>
 				<button
 					type="submit"
-					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950"
+					disabled={!authStore.esGenerador}
+					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 				>
-					+ Crear Asignación
+					+ Crear Asignación {authStore.esGenerador ? '' : '(Requiere rol Generador)'}
 				</button>
 			</form>
 
@@ -575,7 +584,8 @@
 						</div>
 						<button
 							type="button"
-							class="rounded border px-2 py-1 font-mono text-[10px] {a.estaActivo
+							disabled={!authStore.esGenerador}
+							class="rounded border px-2 py-1 font-mono text-[10px] disabled:opacity-40 {a.estaActivo
 								? 'border-emerald-500/40 text-emerald-300'
 								: 'border-rose-500/40 text-rose-300'}"
 							onclick={() => catalogStore.cambiarEstadoAsignacion(a.id, !a.estaActivo)}

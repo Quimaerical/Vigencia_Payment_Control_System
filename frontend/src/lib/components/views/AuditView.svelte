@@ -34,7 +34,7 @@
 				<span
 					class="rounded-full border border-teal-400/30 bg-teal-400/15 px-2 py-0.5 font-mono text-[10px] font-bold text-teal-300"
 				>
-					SHA-256
+					Audit DB
 				</span>
 			</div>
 		</div>
@@ -104,9 +104,9 @@
 				>
 					<span class="flex items-center gap-1 font-semibold text-teal-300">
 						<span class="material-symbols-outlined text-[14px]">verified_user</span>
-						Integridad Criptográfica Verificada
+						Registro Inmutable #{diff.id}
 					</span>
-					<span class="text-neutral-400">Nivel: ISO 27001</span>
+					<span class="text-neutral-400">IP: {diff.ipOrigen || 'N/A'}</span>
 				</div>
 			</div>
 		{/each}
