@@ -52,7 +52,11 @@ export default class Usuario extends compose(BaseModel, AuthFinder) {
   @column.dateTime({ autoCreate: true })
   declare creadoEn: DateTime
 
-  static accessTokens = DbAccessTokensProvider.forModel(Usuario)
+  /**
+   * Access tokens opacos guardados con hash. Caducan a las 8 horas, una jornada, sin
+   * refresh token; el logout y la desactivación los revocan de inmediato (ADR 0003).
+   */
+  static accessTokens = DbAccessTokensProvider.forModel(Usuario, { expiresIn: '8 hours' })
   declare currentAccessToken?: AccessToken
 
   @hasMany(() => Pago)

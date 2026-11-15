@@ -1,5 +1,10 @@
 import { test } from '@japa/runner'
 import type { ApiClient } from '@japa/api-client'
+import testUtils from '@adonisjs/core/services/test_utils'
+import db from '@adonisjs/lucid/services/db'
+import { DateTime } from 'luxon'
+import Usuario from '#models/usuario'
+import { RolUsuario } from '@app/shared'
 
 /**
  * Pide GET / con el origen indicado y devuelve la cabecera Access-Control-Allow-Origin.
@@ -79,6 +84,77 @@ test.group('Endurecimiento auth: CORS (ADR 0005 y 0013)', () => {
 
   test('sin Origin la API responde', async ({ client }) => {
     const resp = await client.get('/')
+    resp.assertStatus(200)
+  })
+})
+
+const CONTRASENA = 'PasswordSeguro123!'
+
+/**
+ * Crea un usuario activo con el rol indicado y un nombre único por prueba.
+ */
+async function crearUsuario(rol: RolUsuario, etiqueta: string) {
+  return Usuario.create({
+    username: `end_${etiqueta}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
+    passwordHash: CONTRASENA,
+    rol,
+    estaActivo: true,
+  })
+}
+
+/**
+ * Inicia sesión por HTTP y devuelve el Bearer emitido (acepta `token` o `data.token`).
+ */
+async function iniciarSesion(client: ApiClient, username: string) {
+  const resp = await client.post('/api/v1/auth/login').json({ username, password: CONTRASENA })
+  resp.assertStatus(200)
+  const cuerpo = resp.body() as { token?: string; data?: { token?: string } }
+  return (cuerpo.token ?? cuerpo.data?.token) as string
+}
+
+/**
+ * Fija expires_at de los tokens del usuario (para simular el paso del tiempo).
+ */
+async function fijarExpiracion(usuarioId: number, fecha: DateTime) {
+  await db
+    .from('auth_access_tokens')
+    .where('tokenable_id', usuarioId)
+    .update({ expires_at: fecha.toJSDate() })
+}
+
+test.group('Endurecimiento auth: expiración de tokens (ADR 0003)', (group) => {
+  group.each.setup(() => testUtils.db().wrapInGlobalTransaction())
+
+  test('el login emite un token que vence en 8 horas', async ({ client, assert }) => {
+    const usuario = await crearUsuario(RolUsuario.GENERADOR, 'exp8h')
+    await iniciarSesion(client, usuario.username)
+
+    const fila = await db
+      .from('auth_access_tokens')
+      .where('tokenable_id', usuario.id)
+      .orderBy('id', 'desc')
+      .firstOrFail()
+    const vence = DateTime.fromJSDate(new Date(fila.expires_at))
+
+    assert.isTrue(vence > DateTime.now().plus({ hours: 7, minutes: 59 }))
+    assert.isTrue(vence < DateTime.now().plus({ hours: 8, minutes: 1 }))
+  })
+
+  test('un token del login con expires_at pasado recibe 401', async ({ client }) => {
+    const usuario = await crearUsuario(RolUsuario.GENERADOR, 'vencido')
+    const bearer = await iniciarSesion(client, usuario.username)
+    await fijarExpiracion(usuario.id, DateTime.now().minus({ minutes: 1 }))
+
+    const resp = await client.get('/api/v1/account/perfil').bearerToken(bearer)
+    resp.assertStatus(401)
+  })
+
+  test('un token a 1 minuto de vencer sigue sirviendo', async ({ client }) => {
+    const usuario = await crearUsuario(RolUsuario.GENERADOR, 'vigente')
+    const bearer = await iniciarSesion(client, usuario.username)
+    await fijarExpiracion(usuario.id, DateTime.now().plus({ minutes: 1 }))
+
+    const resp = await client.get('/api/v1/account/perfil').bearerToken(bearer)
     resp.assertStatus(200)
   })
 })
