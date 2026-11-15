@@ -13,10 +13,11 @@ import {
   operarFinanzasNoAdmin,
 } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
 
 export default class SolicitudesPagoController {
   /**
-   * Lista todas las solicitudes de pago con sus relaciones (roles 'generador' y 'receptor')
+   * Lista todas las solicitudes de pago con sus relaciones (roles 'generador' y 'receptor') — paginado (máx. 100 por página)
    */
   async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
@@ -36,8 +37,9 @@ export default class SolicitudesPagoController {
     if (filtros.proyectoId) query.where('proyecto_id', filtros.proyectoId)
     if (estado) query.where('estado', String(estado))
 
-    const solicitudes = await query
-    return response.status(200).json({ data: solicitudes })
+    const { pagina, limite } = parametrosPaginacion(filtros)
+    const solicitudes = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(solicitudes))
   }
 
   /**

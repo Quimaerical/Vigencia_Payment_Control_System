@@ -13,14 +13,31 @@ const MAX_INTEGER_PG = 2_147_483_647
 const idFiltro = () => vine.number().withoutDecimals().min(1).max(MAX_INTEGER_PG).optional()
 
 /**
- * Filtros numéricos de los listados financieros (causaciones/deudas, asignaciones,
- * solicitudes de pago, pagos y cajas chicas). Cada controlador usa solo los que necesita.
+ * Filas por página: por defecto y máximo de todos los listados (hallazgo B1, ADR 0019).
+ */
+export const LIMITE_POR_DEFECTO = 20
+export const LIMITE_MAXIMO = 100
+
+/**
+ * Parámetros de paginación de los listados: página (≥ 1) y filas por página (1–100).
+ * Un valor fuera de rango, decimal o texto responde 422; nunca se recorta en silencio.
+ */
+const paginacion = {
+  pagina: vine.number().withoutDecimals().min(1).max(MAX_INTEGER_PG).optional(),
+  limite: vine.number().withoutDecimals().min(1).max(LIMITE_MAXIMO).optional(),
+}
+
+/**
+ * Filtros numéricos y paginación de los listados financieros (causaciones/deudas,
+ * asignaciones, solicitudes de pago, pagos y cajas chicas). Cada controlador usa solo los
+ * filtros que necesita.
  */
 export const filtrosListadoValidator = vine.create({
   proyectoId: idFiltro(),
   personaId: idFiltro(),
   solicitudId: idFiltro(),
   grupoPagoId: idFiltro(),
+  ...paginacion,
 })
 
 /**
@@ -30,3 +47,8 @@ export const filtrosAuditLogsValidator = vine.create({
   usuarioId: idFiltro(),
   limite: vine.number().withoutDecimals().min(1).max(500).optional(),
 })
+
+/**
+ * Paginación de los listados de catálogos y usuarios, que no tienen filtros numéricos.
+ */
+export const paginacionValidator = vine.create({ ...paginacion })

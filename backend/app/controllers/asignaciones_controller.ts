@@ -9,10 +9,11 @@ import { cambiarEstadoActivoValidator } from '#validators/usuario'
 import { filtrosListadoValidator } from '#validators/filtros'
 import { esGenerador, leerDetalleFinanciero } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
 
 export default class AsignacionesController {
   /**
-   * Lista las asignaciones (cruce persona + proyecto + grupo_pago) (roles 'generador' y 'receptor')
+   * Lista las asignaciones (cruce persona + proyecto + grupo_pago) (roles 'generador' y 'receptor') — paginado (máx. 100 por página)
    */
   async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
@@ -33,8 +34,9 @@ export default class AsignacionesController {
       query.where('esta_activo', true)
     }
 
-    const asignaciones = await query
-    return response.status(200).json({ data: asignaciones })
+    const { pagina, limite } = parametrosPaginacion(filtros)
+    const asignaciones = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(asignaciones))
   }
 
   /**

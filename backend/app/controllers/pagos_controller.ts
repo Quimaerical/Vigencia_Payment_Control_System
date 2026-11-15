@@ -10,10 +10,11 @@ import { procesarPagoValidator, anularPagoValidator } from '#validators/pago'
 import { filtrosListadoValidator } from '#validators/filtros'
 import { leerDetalleFinanciero, registrarPago } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
 
 export default class PagosController {
   /**
-   * Lista los pagos registrados con sus relaciones de persona, usuario, solicitud y prorrateos (roles 'generador' y 'receptor')
+   * Lista los pagos registrados con sus relaciones de persona, usuario, solicitud y prorrateos (roles 'generador' y 'receptor') — paginado (máx. 100 por página)
    */
   public async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
@@ -32,8 +33,9 @@ export default class PagosController {
     if (filtros.solicitudId) query.where('solicitud_id', filtros.solicitudId)
     if (estado) query.where('estado', String(estado))
 
-    const pagos = await query
-    return response.status(200).json({ data: pagos })
+    const { pagina, limite } = parametrosPaginacion(filtros)
+    const pagos = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(pagos))
   }
 
   /**

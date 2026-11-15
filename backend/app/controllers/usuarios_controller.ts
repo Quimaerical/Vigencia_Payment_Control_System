@@ -4,6 +4,8 @@ import type { HttpContext } from '@adonisjs/core/http'
 import UsuarioTransformer from '#transformers/usuario_transformer'
 import { esAdministrador } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
+import { paginacionValidator } from '#validators/filtros'
 import { RolUsuario } from '@app/shared'
 
 export default class UsuariosController {
@@ -15,14 +17,17 @@ export default class UsuariosController {
   }
 
   /**
-   * Lista todos los usuarios del sistema (restringido a rol 'administrador')
+   * Lista todos los usuarios del sistema (restringido a rol 'administrador') — paginado (máx. 100 por página)
    */
-  async listar({ auth, bouncer, response }: HttpContext) {
+  async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
     await bouncer.authorize(esAdministrador)
+    const { pagina, limite } = parametrosPaginacion(
+      await request.validateUsing(paginacionValidator)
+    )
 
-    const usuarios = await Usuario.query().orderBy('id', 'asc')
-    return response.status(200).json({ data: usuarios })
+    const usuarios = await Usuario.query().orderBy('id', 'asc').paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(usuarios))
   }
 
   /**

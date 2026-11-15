@@ -13,6 +13,7 @@ import {
 import { filtrosListadoValidator } from '#validators/filtros'
 import { esGenerador, leerDetalleFinanciero } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
 
 export default class CausacionesController {
   /**
@@ -31,7 +32,7 @@ export default class CausacionesController {
   }
 
   /**
-   * Lista las causaciones / deudas registradas con filtros por proyecto, persona, solicitud o estado (roles 'generador' y 'receptor')
+   * Lista las causaciones / deudas registradas con filtros por proyecto, persona, solicitud o estado (roles 'generador' y 'receptor') — paginado (máx. 100 por página)
    */
   async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
@@ -52,8 +53,9 @@ export default class CausacionesController {
     if (filtros.solicitudId) query.where('solicitud_id', filtros.solicitudId)
     if (estado) query.where('estado', String(estado))
 
-    const deudas = await query
-    return response.status(200).json({ data: deudas })
+    const { pagina, limite } = parametrosPaginacion(filtros)
+    const deudas = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(deudas))
   }
 
   /**

@@ -20,10 +20,11 @@ import {
   operarFinanzasNoAdmin,
 } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
 
 export default class CajasChicasController {
   /**
-   * Lista todas las cajas chicas con proyecto, responsable, caja origen y vales (roles 'generador' y 'receptor')
+   * Lista todas las cajas chicas con proyecto, responsable, caja origen y vales (roles 'generador' y 'receptor') — paginado (máx. 100 por página)
    */
   async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
@@ -41,8 +42,9 @@ export default class CajasChicasController {
     if (filtros.proyectoId) query.where('proyecto_id', filtros.proyectoId)
     if (estado) query.where('estado', String(estado))
 
-    const cajas = await query
-    return response.status(200).json({ data: cajas })
+    const { pagina, limite } = parametrosPaginacion(filtros)
+    const cajas = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(cajas))
   }
 
   /**

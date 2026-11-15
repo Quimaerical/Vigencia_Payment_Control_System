@@ -5,13 +5,18 @@ import { crearProyectoValidator, actualizarProyectoValidator } from '#validators
 import { cambiarEstadoActivoValidator } from '#validators/usuario'
 import { esGenerador } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
+import { paginacionValidator } from '#validators/filtros'
 
 export default class ProyectosController {
   /**
-   * Lista los proyectos registrados con su área, ámbito y vigencia
+   * Lista los proyectos registrados con su área, ámbito y vigencia — paginado (máx. 100 por página)
    */
   async listar({ auth, request, response }: HttpContext) {
     auth.getUserOrFail()
+    const { pagina, limite } = parametrosPaginacion(
+      await request.validateUsing(paginacionValidator)
+    )
     const area = request.input('area')
     const ambito = request.input('ambito')
     const soloActivos = request.input('soloActivos')
@@ -23,8 +28,8 @@ export default class ProyectosController {
       query.where('esta_activo', true)
     }
 
-    const proyectos = await query
-    return response.status(200).json({ data: proyectos })
+    const proyectos = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(proyectos))
   }
 
   /**
