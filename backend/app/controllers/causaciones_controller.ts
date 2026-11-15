@@ -59,10 +59,12 @@ export default class CausacionesController {
   }
 
   /**
-   * Simulador de prorrateo sin persistencia en base de datos
+   * Simulador de prorrateo sin persistencia en base de datos. Solo el Generador, que es quien
+   * causa; se autoriza antes de validar para no revelar reglas del cuerpo (B2, ADR 0020).
    */
-  async simular({ auth, request, response }: HttpContext) {
+  async simular({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(esGenerador)
     const { montoPeriodo, diasActivos, diasPeriodo } =
       await request.validateUsing(simularProrrateoValidator)
 

@@ -21,8 +21,11 @@ server.errorHandler(() => import('#exceptions/handler'))
  * The server middleware stack runs middleware on all the HTTP
  * requests, even if there is no route registered for
  * the request URL.
+ *
+ * `cabeceras_seguridad`: CSP y Referrer-Policy en toda respuesta, incluidos 404 (B3, ADR 0020).
  */
 server.use([
+  () => import('#middleware/cabeceras_seguridad_middleware'),
   () => import('#middleware/force_json_response_middleware'),
   () => import('#middleware/container_bindings_middleware'),
   () => import('@adonisjs/cors/cors_middleware'),
