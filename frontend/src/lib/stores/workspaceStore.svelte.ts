@@ -16,10 +16,6 @@ class WorkspaceStore {
 	activeProjectId = $state<number>(1);
 	modules = $state<ModuloWorkspace[]>([]);
 
-	esAdmin = $derived(this.currentRole === RolUsuario.ADMINISTRADOR);
-	esGenerador = $derived(this.currentRole === RolUsuario.GENERADOR);
-	esReceptor = $derived(this.currentRole === RolUsuario.RECEPTOR);
-
 	toast = $state<{
 		visible: boolean;
 		message: string;

@@ -96,7 +96,7 @@ export interface AuditDiffItem {
 	tablaAfectada: string;
 	registroId: number;
 	usuarioId: string;
-	usuarioRol: RolUsuario;
+	usuarioRol: RolUsuario | 'sistema' | 'desconocido';
 	timestamp: string;
 	ipOrigen?: string | null;
 	hashSha256?: string;
@@ -493,7 +493,7 @@ export interface AuditLogBackendDTO {
 	registroId: number;
 	datosAnteriores: Record<string, unknown> | null;
 	datosNuevos: Record<string, unknown> | null;
-	ipOrigen: string | null;
+	direccionIp: string | null;
 	creadoEn: string;
 	usuario?: UsuarioDTO | null;
 }

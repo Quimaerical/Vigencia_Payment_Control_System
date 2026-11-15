@@ -26,7 +26,6 @@
 
 	onMount(async () => {
 		await authStore.initSession();
-		await financialStore.syncFromBackend();
 	});
 </script>
 

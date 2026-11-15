@@ -19,7 +19,7 @@ import type {
 	CrearSolicitudPagoDTO,
 	ProcesarPagoDTO
 } from '../types/financial';
-import { EstadoDeuda, EstadoPago, MetodoPago, RolUsuario } from '@app/shared';
+import { EstadoDeuda, EstadoPago, MetodoPago } from '@app/shared';
 
 const EMPTY_KPIS: KPIsFinancieros = {
 	totalCausado: 0,
@@ -109,179 +109,186 @@ class FinancialStore {
 	 * Sincroniza el estado financiero completo con el backend (/api/v1/*)
 	 */
 	async syncFromBackend(): Promise<void> {
-		if (!ApiClient.getToken()) return;
+		if (!ApiClient.getToken() || this.isSyncing) return;
 		this.isSyncing = true;
 
-		const [resumenRes, causacionesRes, solicitudesRes, pagosRes] = await Promise.all([
-			ApiClient.obtenerResumenReporte(),
-			ApiClient.listarCausaciones(),
-			ApiClient.listarSolicitudesPago(),
-			ApiClient.listarPagos()
-		]);
+		try {
+			const [resumenRes, causacionesRes, solicitudesRes, pagosRes] = await Promise.all([
+				ApiClient.obtenerResumenReporte(),
+				ApiClient.listarCausaciones(),
+				ApiClient.listarSolicitudesPago(),
+				ApiClient.listarPagos()
+			]);
 
-		await Promise.all([catalogStore.syncAll(), pettyCashStore.syncAll()]);
+			if (
+				resumenRes.isOffline ||
+				causacionesRes.isOffline ||
+				solicitudesRes.isOffline ||
+				pagosRes.isOffline
+			) {
+				this.isOffline = true;
+				return;
+			}
 
-		if (resumenRes.isOffline || causacionesRes.isOffline) {
-			this.isOffline = true;
-			this.isSyncing = false;
-			return;
-		}
+			this.isOffline = false;
+			await Promise.all([catalogStore.syncAll(), pettyCashStore.syncAll()]);
 
-		this.isOffline = false;
+			if (resumenRes.data) {
+				this.resumenReporte = resumenRes.data;
+				this.kpis = {
+					totalCausado: Number(resumenRes.data.kpis.totalCausado ?? 0),
+					porcentajeCausadoVsPrev: 0,
+					totalPagado: Number(resumenRes.data.kpis.totalPagado ?? 0),
+					porcentajeCubierto: Number(resumenRes.data.kpis.porcentajeCubierto ?? 0),
+					saldoExigible: Number(resumenRes.data.kpis.saldoExigible ?? 0),
+					pasivosFifoCount: Number(resumenRes.data.kpis.pasivosFifoCount ?? 0),
+					cajaChicaSaldo: Number(resumenRes.data.kpis.cajaChicaSaldo ?? 0),
+					valesCustodiaCount: Number(resumenRes.data.kpis.valesCustodiaCount ?? 0)
+				};
 
-		if (resumenRes.data) {
-			this.resumenReporte = resumenRes.data;
-			this.kpis = {
-				totalCausado: Number(resumenRes.data.kpis.totalCausado ?? 0),
-				porcentajeCausadoVsPrev: Number(resumenRes.data.kpis.porcentajeCubierto ?? 0),
-				totalPagado: Number(resumenRes.data.kpis.totalPagado ?? 0),
-				porcentajeCubierto: Number(resumenRes.data.kpis.porcentajeCubierto ?? 0),
-				saldoExigible: Number(resumenRes.data.kpis.saldoExigible ?? 0),
-				pasivosFifoCount: Number(resumenRes.data.kpis.pasivosFifoCount ?? 0),
-				cajaChicaSaldo: Number(resumenRes.data.kpis.cajaChicaSaldo ?? 0),
-				valesCustodiaCount: Number(resumenRes.data.kpis.valesCustodiaCount ?? 0)
-			};
+				if (catalogStore.proyectos.length > 0) {
+					this.proyectos = catalogStore.proyectos.map((p) => {
+						const desglose = resumenRes.data?.porProyecto.find((rp) => rp.proyectoId === p.id);
+						const causado = desglose?.totalCausado ?? 0;
+						const pagado = desglose?.totalPagado ?? 0;
+						const ejecucion = causado > 0 ? Number(((pagado / causado) * 100).toFixed(1)) : 0;
+						return {
+							id: p.id,
+							codigo: p.codigo,
+							nombre: p.nombre,
+							descripcion: p.descripcion ?? undefined,
+							area: p.area,
+							ambito: p.ambito,
+							fechaInicio: p.fechaInicio,
+							fechaFin: p.fechaFin,
+							presupuestoUsd: causado,
+							porcentajeEjecucion: ejecucion,
+							estaActivo: p.estaActivo
+						};
+					});
+				}
+			}
 
-			if (catalogStore.proyectos.length > 0) {
-				this.proyectos = catalogStore.proyectos.map((p) => {
-					const desglose = resumenRes.data?.porProyecto.find((rp) => rp.proyectoId === p.id);
-					const causado = desglose?.totalCausado ?? 0;
-					const pagado = desglose?.totalPagado ?? 0;
-					const ejecucion = causado > 0 ? Number(((pagado / causado) * 100).toFixed(1)) : 0;
+			if (causacionesRes.data?.data) {
+				this.deudasRaw = causacionesRes.data.data;
+
+				const activas = this.deudasRaw.filter((d) => d.estado !== EstadoDeuda.ANULADA);
+				this.asignaciones = activas.map((d) => {
+					const nombres = d.persona
+						? `${d.persona.nombres} ${d.persona.apellidos}`
+						: `Persona #${d.personaId}`;
+					const iniciales = d.persona
+						? `${d.persona.nombres.charAt(0)}${d.persona.apellidos.charAt(0)}`.toUpperCase()
+						: 'BN';
+					const area = d.proyecto?.area ? d.proyecto.area.toUpperCase() : 'FISICA';
+					const diasActivos = Number(d.diasActivos ?? 15);
+					const diasPeriodo = Number(d.diasPeriodo ?? 15);
+					const montoOrig = Number(d.montoOriginal ?? 0);
+					const baseUsd = d.asignacion ? Number(d.asignacion.montoPeriodo) : montoOrig;
+
 					return {
-						id: p.id,
-						codigo: p.codigo,
-						nombre: p.nombre,
-						descripcion: p.descripcion ?? undefined,
-						area: p.area,
-						ambito: p.ambito,
-						fechaInicio: p.fechaInicio,
-						fechaFin: p.fechaFin,
-						presupuestoUsd: causado,
-						porcentajeEjecucion: ejecucion,
-						estaActivo: p.estaActivo
+						id: d.id,
+						deudaId: d.id,
+						beneficiarioId: d.personaId,
+						beneficiarioNombre: nombres,
+						beneficiarioIniciales: iniciales,
+						area,
+						diasActivos,
+						diasPeriodo,
+						baseContractualUsd: baseUsd,
+						montoCausadoUsd: montoOrig,
+						estado:
+							d.estado === EstadoDeuda.LIQUIDADA
+								? 'liquidado'
+								: d.estado === EstadoDeuda.ABONADO
+									? 'abonado'
+									: 'pendiente'
+					};
+				});
+
+				this.deudasFifo = activas.map((d) => {
+					const montoOrig = Number(d.montoOriginal ?? 0);
+					const saldoPend = Number(d.saldoPendiente ?? 0);
+					const amortizado = Number(Math.max(0, montoOrig - saldoPend).toFixed(2));
+					const pct = montoOrig > 0 ? Number(((amortizado / montoOrig) * 100).toFixed(0)) : 0;
+					const personaNombre = d.persona
+						? `${d.persona.nombres} ${d.persona.apellidos}`
+						: `Persona #${d.personaId}`;
+					const proyCod = d.proyecto?.codigo ?? `PROY-${d.proyectoId}`;
+
+					return {
+						id: d.id,
+						proyectoId: d.proyectoId,
+						personaId: d.personaId,
+						solicitudId: d.solicitudId ?? null,
+						beneficiarioNombre: personaNombre,
+						proyectoCodigo: proyCod,
+						fechaVencimiento: String(d.fechaVencimiento).substring(0, 10),
+						descripcion: `${proyCod} · ${personaNombre} (Vence: ${String(d.fechaVencimiento).substring(0, 10)})`,
+						montoOriginal: montoOrig,
+						saldoPendiente: saldoPend,
+						montoAmortizado: amortizado,
+						porcentajeAmortizado: pct,
+						estado:
+							d.estado === EstadoDeuda.LIQUIDADA
+								? 'liquidada'
+								: d.estado === EstadoDeuda.ABONADO
+									? 'abonado'
+									: 'pendiente'
 					};
 				});
 			}
-		}
 
-		if (causacionesRes.data?.data) {
-			this.deudasRaw = causacionesRes.data.data;
-
-			const activas = this.deudasRaw.filter((d) => d.estado !== EstadoDeuda.ANULADA);
-			this.asignaciones = activas.map((d) => {
-				const nombres = d.persona
-					? `${d.persona.nombres} ${d.persona.apellidos}`
-					: `Persona #${d.personaId}`;
-				const iniciales = d.persona
-					? `${d.persona.nombres.charAt(0)}${d.persona.apellidos.charAt(0)}`.toUpperCase()
-					: 'BN';
-				const area = d.proyecto?.area ? d.proyecto.area.toUpperCase() : 'FISICA';
-				const diasActivos = Number(d.diasActivos ?? 15);
-				const diasPeriodo = Number(d.diasPeriodo ?? 15);
-				const montoOrig = Number(d.montoOriginal ?? 0);
-				const baseUsd = d.asignacion ? Number(d.asignacion.montoPeriodo) : montoOrig;
-
-				return {
-					id: d.id,
-					deudaId: d.id,
-					beneficiarioId: d.personaId,
-					beneficiarioNombre: nombres,
-					beneficiarioIniciales: iniciales,
-					area,
-					diasActivos,
-					diasPeriodo,
-					baseContractualUsd: baseUsd,
-					montoCausadoUsd: montoOrig,
-					estado:
-						d.estado === EstadoDeuda.LIQUIDADA
-							? 'liquidado'
-							: d.estado === EstadoDeuda.ABONADO
-								? 'abonado'
-								: 'pendiente'
-				};
-			});
-
-			this.deudasFifo = activas.map((d) => {
-				const montoOrig = Number(d.montoOriginal ?? 0);
-				const saldoPend = Number(d.saldoPendiente ?? 0);
-				const amortizado = Number(Math.max(0, montoOrig - saldoPend).toFixed(2));
-				const pct = montoOrig > 0 ? Number(((amortizado / montoOrig) * 100).toFixed(0)) : 0;
-				const personaNombre = d.persona
-					? `${d.persona.nombres} ${d.persona.apellidos}`
-					: `Persona #${d.personaId}`;
-				const proyCod = d.proyecto?.codigo ?? `PROY-${d.proyectoId}`;
-
-				return {
-					id: d.id,
-					proyectoId: d.proyectoId,
-					personaId: d.personaId,
-					solicitudId: d.solicitudId ?? null,
-					beneficiarioNombre: personaNombre,
-					proyectoCodigo: proyCod,
-					fechaVencimiento: String(d.fechaVencimiento).substring(0, 10),
-					descripcion: `${proyCod} · ${personaNombre} (Vence: ${String(d.fechaVencimiento).substring(0, 10)})`,
-					montoOriginal: montoOrig,
-					saldoPendiente: saldoPend,
-					montoAmortizado: amortizado,
-					porcentajeAmortizado: pct,
-					estado:
-						d.estado === EstadoDeuda.LIQUIDADA
-							? 'liquidada'
-							: d.estado === EstadoDeuda.ABONADO
-								? 'abonado'
-								: 'pendiente'
-				};
-			});
-		}
-
-		if (solicitudesRes.data?.data) {
-			this.solicitudesPago = solicitudesRes.data.data;
-		}
-
-		if (pagosRes.data?.data) {
-			this.pagosRaw = pagosRes.data.data;
-			this.asientos = this.pagosRaw.map((p) => {
-				const personaNombre = p.persona
-					? `${p.persona.nombres} ${p.persona.apellidos}`
-					: `Beneficiario #${p.personaId}`;
-				const proyCod = p.solicitudPago?.codigo ?? `SOL-${p.solicitudId ?? 'DIRECTO'}`;
-				return {
-					id: `#PAGO-${p.id}`,
-					pagoId: p.id,
-					timestamp: String(p.fechaPago).substring(0, 10),
-					concepto: `Pago ${p.metodoPago.toUpperCase()} ${p.numeroReferencia ? `(${p.numeroReferencia})` : ''}`,
-					beneficiarioNombre: personaNombre,
-					proyectoCodigo: proyCod,
-					montoUsd: Number(p.montoTotal),
-					estado: p.estado === EstadoPago.ANULADO ? 'anulado' : 'asentado',
-					motivoReverso: p.motivoAnulacion ?? undefined
-				};
-			});
-		}
-
-		if (authStore.esAdmin) {
-			const auditRes = await ApiClient.listarAuditLogs({ limite: 100 });
-			if (auditRes.data?.data) {
-				this.auditDiffs = auditRes.data.data.map((log) => ({
-					id: log.id,
-					accion: log.accion,
-					tablaAfectada: log.tablaAfectada,
-					registroId: log.registroId,
-					usuarioId: log.usuario?.username ?? (log.usuarioId ? `usr_${log.usuarioId}` : 'sistema'),
-					usuarioRol: log.usuario?.rol ?? RolUsuario.ADMINISTRADOR,
-					timestamp: String(log.creadoEn).replace('T', ' ').substring(0, 19),
-					ipOrigen: log.ipOrigen ?? null,
-					datosAnteriores: log.datosAnteriores,
-					datosNuevos: log.datosNuevos ?? {}
-				}));
+			if (solicitudesRes.data?.data) {
+				this.solicitudesPago = solicitudesRes.data.data;
 			}
-		} else {
-			this.auditDiffs = [];
-		}
 
-		this.persist();
-		this.isSyncing = false;
+			if (pagosRes.data?.data) {
+				this.pagosRaw = pagosRes.data.data;
+				this.asientos = this.pagosRaw.map((p) => {
+					const personaNombre = p.persona
+						? `${p.persona.nombres} ${p.persona.apellidos}`
+						: `Beneficiario #${p.personaId}`;
+					const proyCod = p.solicitudPago?.codigo ?? `SOL-${p.solicitudId ?? 'DIRECTO'}`;
+					return {
+						id: `#PAGO-${p.id}`,
+						pagoId: p.id,
+						timestamp: String(p.fechaPago).substring(0, 10),
+						concepto: `Pago ${p.metodoPago.toUpperCase()} ${p.numeroReferencia ? `(${p.numeroReferencia})` : ''}`,
+						beneficiarioNombre: personaNombre,
+						proyectoCodigo: proyCod,
+						montoUsd: Number(p.montoTotal),
+						estado: p.estado === EstadoPago.ANULADO ? 'anulado' : 'asentado',
+						motivoReverso: p.motivoAnulacion ?? undefined
+					};
+				});
+			}
+
+			if (authStore.esAdmin) {
+				const auditRes = await ApiClient.listarAuditLogs({ limite: 100 });
+				if (auditRes.data?.data) {
+					this.auditDiffs = auditRes.data.data.map((log) => ({
+						id: log.id,
+						accion: log.accion,
+						tablaAfectada: log.tablaAfectada,
+						registroId: log.registroId,
+						usuarioId:
+							log.usuario?.username ?? (log.usuarioId ? `usr_${log.usuarioId}` : 'sistema'),
+						usuarioRol: log.usuario?.rol ?? (log.usuarioId ? 'desconocido' : 'sistema'),
+						timestamp: String(log.creadoEn).replace('T', ' ').substring(0, 19),
+						ipOrigen: log.direccionIp ?? null,
+						datosAnteriores: log.datosAnteriores,
+						datosNuevos: log.datosNuevos ?? {}
+					}));
+				}
+			} else {
+				this.auditDiffs = [];
+			}
+
+			this.persist();
+		} finally {
+			this.isSyncing = false;
+		}
 	}
 
 	calcularProrrateo(diasActivos: number, diasPeriodo: number, baseUsd: number): number {
