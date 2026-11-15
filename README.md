@@ -155,6 +155,19 @@ pnpm --filter @app/backend dev
 ```
 *El backend escuchará en `http://localhost:3333`.*
 
+### 2.1. Ejecutar las Pruebas del Backend
+Las pruebas usan una base propia, `vigencia_test`, en el mismo contenedor. Créala una vez:
+```bash
+docker exec vigencia-postgres createdb -U postgres vigencia_test
+```
+Después, desde `backend/`:
+```bash
+node ace test
+```
+La suite recrea el esquema de `vigencia_test` al empezar (`migration:fresh`) y nunca toca
+`vigencia_db`: aborta si `DB_DATABASE` no termina en `_test` o si hay una `DATABASE_URL`.
+Cada prueba corre en una transacción que se revierte, salvo los grupos `[concurrencia]`.
+
 ### 3. Configurar y Activar el Túnel de Cloudflare (cloudflared)
 Para exponer tu API local de forma segura hacia Vercel:
 

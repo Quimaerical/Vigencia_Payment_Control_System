@@ -1,6 +1,8 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
+import testUtils from '@adonisjs/core/services/test_utils'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import Usuario from '#models/usuario'
 import Persona from '#models/persona'
 import Proyecto from '#models/proyecto'
@@ -24,7 +26,23 @@ import {
   MetodoPago,
 } from '@app/shared'
 
-test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
+/**
+ * Ejecuta una escritura que se espera rechazada por PostgreSQL dentro de un punto de
+ * guardado (SAVEPOINT). Con la transacción global de la prueba, un error SQL fuera de un
+ * punto de guardado deja la transacción abortada y todas las consultas siguientes fallan.
+ * La acción debe usar el `trx` recibido para que su sentencia quede dentro del punto.
+ */
+async function enPuntoDeGuardado(
+  accion: (trx: TransactionClientContract) => Promise<unknown>
+): Promise<void> {
+  await db.transaction(async (trx) => {
+    await accion(trx)
+  })
+}
+
+test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', (group) => {
+  group.each.setup(() => testUtils.db().wrapInGlobalTransaction())
+
   test('verifica relaciones de modelos y auditoría forense automática en PostgreSQL', async ({
     assert,
   }) => {
@@ -199,31 +217,45 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
     })
 
     // 1. Intentar crear una SolicitudPago con creado_por_id = Administrador debe fallar por Trigger RBAC
-    await assert.rejects(async () => {
-      await SolicitudPago.create({
-        codigo: `SOL-ILEGAL-${sufijo}`,
-        proyectoId: proyecto.id,
-        periodoInicio: DateTime.now().minus({ days: 15 }),
-        periodoFin: DateTime.now(),
-        montoTotal: 100,
-        estado: EstadoSolicitud.CREACION,
-        creadoPorId: admin.id,
-      })
-    }, /Violación de Segregación de Funciones: El rol Administrador no tiene autorización para operar transacciones financieras/)
+    await assert.rejects(
+      () =>
+        enPuntoDeGuardado(async (trx) => {
+          await SolicitudPago.create(
+            {
+              codigo: `SOL-ILEGAL-${sufijo}`,
+              proyectoId: proyecto.id,
+              periodoInicio: DateTime.now().minus({ days: 15 }),
+              periodoFin: DateTime.now(),
+              montoTotal: 100,
+              estado: EstadoSolicitud.CREACION,
+              creadoPorId: admin.id,
+            },
+            { client: trx }
+          )
+        }),
+      /Violación de Segregación de Funciones: El rol Administrador no tiene autorización para operar transacciones financieras/
+    )
 
     // 2. Intentar aprobar una SolicitudPago con revisado_por_id = Generador debe fallar por Trigger RBAC
-    await assert.rejects(async () => {
-      await SolicitudPago.create({
-        codigo: `SOL-ROL-ERR-${sufijo}`,
-        proyectoId: proyecto.id,
-        periodoInicio: DateTime.now().minus({ days: 15 }),
-        periodoFin: DateTime.now(),
-        montoTotal: 100,
-        estado: EstadoSolicitud.APROBACION,
-        creadoPorId: generador.id,
-        revisadoPorId: generador.id,
-      })
-    }, /Violación RBAC: Solo un usuario con rol receptor puede revisar, aprobar o rechazar solicitudes de pago/)
+    await assert.rejects(
+      () =>
+        enPuntoDeGuardado(async (trx) => {
+          await SolicitudPago.create(
+            {
+              codigo: `SOL-ROL-ERR-${sufijo}`,
+              proyectoId: proyecto.id,
+              periodoInicio: DateTime.now().minus({ days: 15 }),
+              periodoFin: DateTime.now(),
+              montoTotal: 100,
+              estado: EstadoSolicitud.APROBACION,
+              creadoPorId: generador.id,
+              revisadoPorId: generador.id,
+            },
+            { client: trx }
+          )
+        }),
+      /Violación RBAC: Solo un usuario con rol receptor puede revisar, aprobar o rechazar solicitudes de pago/
+    )
 
     // 3. Crear una solicitud válida y verificar que DELETE físico está bloqueado por inmutabilidad
     const solicitudValida = await SolicitudPago.create({
@@ -236,15 +268,24 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
       creadoPorId: generador.id,
     })
 
-    await assert.rejects(async () => {
-      await solicitudValida.delete()
-    }, /Violación de Inmutabilidad Financiera: No está permitido eliminar físicamente registros de la tabla solicitudes_pago/)
+    await assert.rejects(
+      () =>
+        enPuntoDeGuardado(async (trx) => {
+          solicitudValida.useTransaction(trx)
+          await solicitudValida.delete()
+        }),
+      /Violación de Inmutabilidad Financiera: No está permitido eliminar físicamente registros de la tabla solicitudes_pago/
+    )
 
     // 4. Verificar que UPDATE o DELETE en audit_logs está bloqueado
     const log = await AuditLog.query().firstOrFail()
-    await assert.rejects(async () => {
-      await db.from('audit_logs').where('id', log.id).update({ accion: 'ALTERADO' })
-    }, /Violación de Inmutabilidad Financiera: Los registros de la tabla audit_logs son estrictamente inmutables/)
+    await assert.rejects(
+      () =>
+        enPuntoDeGuardado(async (trx) => {
+          await trx.from('audit_logs').where('id', log.id).update({ accion: 'ALTERADO' })
+        }),
+      /Violación de Inmutabilidad Financiera: Los registros de la tabla audit_logs son estrictamente inmutables/
+    )
   })
 
   test('endpoint POST /api/v1/pagos amortiza deudas con algoritmo FIFO sin regresiones', async ({
@@ -409,31 +450,45 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
     })
 
     // 1. Administrador intentando crear una Asignacion sin contexto de sesión
-    await assert.rejects(async () => {
-      await Asignacion.create({
-        personaId: persona.id,
-        proyectoId: proyecto.id,
-        grupoPagoId: grupoPago.id,
-        creadoPorId: admin.id,
-        montoPeriodo: 100,
-        fechaInicio: DateTime.now(),
-        estaActivo: true,
-      })
-    }, /Violación de Segregación de Funciones: El rol Administrador no tiene autorización para operar transacciones financieras/)
+    await assert.rejects(
+      () =>
+        enPuntoDeGuardado(async (trx) => {
+          await Asignacion.create(
+            {
+              personaId: persona.id,
+              proyectoId: proyecto.id,
+              grupoPagoId: grupoPago.id,
+              creadoPorId: admin.id,
+              montoPeriodo: 100,
+              fechaInicio: DateTime.now(),
+              estaActivo: true,
+            },
+            { client: trx }
+          )
+        }),
+      /Violación de Segregación de Funciones: El rol Administrador no tiene autorización para operar transacciones financieras/
+    )
 
     // 2. Receptor intentando figurar como creador de una Deuda o Asignacion
-    await assert.rejects(async () => {
-      await Deuda.create({
-        personaId: persona.id,
-        proyectoId: proyecto.id,
-        grupoPagoId: grupoPago.id,
-        creadoPorId: receptor.id,
-        montoOriginal: 100,
-        saldoPendiente: 100,
-        fechaVencimiento: DateTime.now().plus({ days: 15 }),
-        estado: EstadoDeuda.PENDIENTE,
-      })
-    }, /Violación RBAC: Solo un usuario con rol generador puede crear registros en deudas/)
+    await assert.rejects(
+      () =>
+        enPuntoDeGuardado(async (trx) => {
+          await Deuda.create(
+            {
+              personaId: persona.id,
+              proyectoId: proyecto.id,
+              grupoPagoId: grupoPago.id,
+              creadoPorId: receptor.id,
+              montoOriginal: 100,
+              saldoPendiente: 100,
+              fechaVencimiento: DateTime.now().plus({ days: 15 }),
+              estado: EstadoDeuda.PENDIENTE,
+            },
+            { client: trx }
+          )
+        }),
+      /Violación RBAC: Solo un usuario con rol generador puede crear registros en deudas/
+    )
 
     // 3. Asignación activa válida creada por Generador y bloqueo de duplicado activo (uq_asignacion_activa)
     await Asignacion.create({
@@ -446,17 +501,24 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
       estaActivo: true,
     })
 
-    await assert.rejects(async () => {
-      await Asignacion.create({
-        personaId: persona.id,
-        proyectoId: proyecto.id,
-        grupoPagoId: grupoPago.id,
-        creadoPorId: generador.id,
-        montoPeriodo: 150,
-        fechaInicio: DateTime.now(),
-        estaActivo: true,
-      })
-    }, /uq_asignacion_activa/)
+    await assert.rejects(
+      () =>
+        enPuntoDeGuardado(async (trx) => {
+          await Asignacion.create(
+            {
+              personaId: persona.id,
+              proyectoId: proyecto.id,
+              grupoPagoId: grupoPago.id,
+              creadoPorId: generador.id,
+              montoPeriodo: 150,
+              fechaInicio: DateTime.now(),
+              estaActivo: true,
+            },
+            { client: trx }
+          )
+        }),
+      /uq_asignacion_activa/
+    )
   })
 
   test('restricciones CHECK monetarias en PostgreSQL bloquean saldos negativos o inconsistentes', async ({
@@ -494,36 +556,58 @@ test.group('Modelo de Datos, Triggers PostgreSQL y Compatibilidad FIFO', () => {
     })
 
     // 1. Deuda con saldo_pendiente > monto_original debe fallar por chk_deudas_saldo
-    await assert.rejects(async () => {
-      await Deuda.create({
-        personaId: persona.id,
-        proyectoId: proyecto.id,
-        grupoPagoId: grupoPago.id,
-        creadoPorId: generador.id,
-        montoOriginal: 100,
-        saldoPendiente: 150,
-        fechaVencimiento: DateTime.now().plus({ days: 10 }),
-        estado: EstadoDeuda.PENDIENTE,
-      })
-    }, /chk_deudas_saldo/)
+    await assert.rejects(
+      () =>
+        enPuntoDeGuardado(async (trx) => {
+          await Deuda.create(
+            {
+              personaId: persona.id,
+              proyectoId: proyecto.id,
+              grupoPagoId: grupoPago.id,
+              creadoPorId: generador.id,
+              montoOriginal: 100,
+              saldoPendiente: 150,
+              fechaVencimiento: DateTime.now().plus({ days: 10 }),
+              estado: EstadoDeuda.PENDIENTE,
+            },
+            { client: trx }
+          )
+        }),
+      /chk_deudas_saldo/
+    )
 
     // 2. Caja chica con saldo_actual negativo debe fallar por chk_cajas_chicas_montos
-    await assert.rejects(async () => {
-      await CajaChica.create({
-        codigo: `CC-ERR-${sufijo}`,
-        nombre: 'Caja Inválida',
-        proyectoId: proyecto.id,
-        responsableId: generador.id,
-        anio: 2026,
-        mes: 11,
-        saldoInicial: 0,
-        montoAsignado: 100,
-        saldoActual: -10,
-        estado: EstadoCajaChica.ABIERTA,
-      })
-    }, /chk_cajas_chicas_montos/)
+    await assert.rejects(
+      () =>
+        enPuntoDeGuardado(async (trx) => {
+          await CajaChica.create(
+            {
+              codigo: `CC-ERR-${sufijo}`,
+              nombre: 'Caja Inválida',
+              proyectoId: proyecto.id,
+              responsableId: generador.id,
+              anio: 2026,
+              mes: 11,
+              saldoInicial: 0,
+              montoAsignado: 100,
+              saldoActual: -10,
+              estado: EstadoCajaChica.ABIERTA,
+            },
+            { client: trx }
+          )
+        }),
+      /chk_cajas_chicas_montos/
+    )
   })
+})
 
+/**
+ * [concurrencia] Sin transacción global (ADR 0010 §4): las peticiones paralelas deben usar
+ * conexiones distintas para que el `FOR UPDATE` se bloquee de verdad. Los datos quedan en
+ * `vigencia_test` (inmutables) y se descartan con el `migration:fresh` de la siguiente
+ * ejecución; por eso conservan los sufijos `Date.now()`.
+ */
+test.group('[concurrencia] Pagos simultáneos sobre la misma solicitud', () => {
   test('endpoint POST /api/v1/pagos valida integridad de solicitudId, rechaza sobrepagos y serializa pagos concurrentes', async ({
     client,
     assert,
