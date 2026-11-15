@@ -2,89 +2,95 @@ import env from '#start/env'
 import { defineConfig } from '@adonisjs/cors'
 
 /**
- * Orígenes permitidos estáticos para desarrollo local
+ * Formato permitido para el nombre del proyecto y el slug del equipo en Vercel (ADR 0013).
+ * Solo minúsculas, dígitos y guiones internos, así se interpolan en la regex sin escapar.
  */
-const localOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:3000',
-]
+const SEGMENTO_VERCEL = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
 /**
- * Orígenes configurados vía variables de entorno (separados por coma)
+ * Orígenes de desarrollo local. Nunca se aceptan en producción (ADR 0005).
  */
-const configuredOrigins = env.get('CORS_ALLOWED_ORIGINS')
-  ? env
-      .get('CORS_ALLOWED_ORIGINS')!
-      .split(',')
-      .map((o) => o.trim())
-      .filter(Boolean)
-  : []
+const origenesLocales =
+  env.get('NODE_ENV') === 'production'
+    ? []
+    : [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+      ]
 
 /**
- * Hostname opcional del túnel de Cloudflare
+ * Orígenes exactos configurados en CORS_ALLOWED_ORIGINS (separados por coma).
  */
-const tunnelHostname = env.get('TUNNEL_HOSTNAME') ? [`https://${env.get('TUNNEL_HOSTNAME')}`] : []
+const origenesConfigurados = (env.get('CORS_ALLOWED_ORIGINS') ?? '')
+  .split(',')
+  .map((origen) => origen.trim())
+  .filter(Boolean)
 
-const allowedOriginsList = [...localOrigins, ...configuredOrigins, ...tunnelHostname]
+const origenesExactos = new Set([...origenesLocales, ...origenesConfigurados])
 
 /**
- * Configuration options to tweak the CORS policy.
- * https://docs.adonisjs.com/guides/security/cors
+ * Construye la regex de previews de Vercel del proyecto, anclada al nombre del proyecto y al
+ * slug del equipo (ADR 0013). Sin ambas variables no se acepta ningún preview. Si alguna
+ * tiene un formato inválido se lanza un error y el backend no arranca (fallar cerrado).
+ */
+function construirRegexPreviews(): RegExp | null {
+  const prefijo = env.get('CORS_VERCEL_PREVIEW_PREFIX')
+  const slugEquipo = env.get('CORS_VERCEL_TEAM_SLUG')
+
+  if (!prefijo || !slugEquipo) {
+    return null
+  }
+
+  if (!SEGMENTO_VERCEL.test(prefijo) || !SEGMENTO_VERCEL.test(slugEquipo)) {
+    throw new Error(
+      'CORS_VERCEL_PREVIEW_PREFIX y CORS_VERCEL_TEAM_SLUG solo admiten minúsculas, dígitos y guiones internos (ADR 0013)'
+    )
+  }
+
+  return new RegExp(`^https://${prefijo}-[a-z0-9-]+-${slugEquipo}\\.vercel\\.app$`)
+}
+
+const regexPreviews = construirRegexPreviews()
+
+/**
+ * Política CORS (ADR 0005 y 0013). La API autentica con Bearer, no con cookies, así que no
+ * se envían credenciales. CORS no es el control de acceso: lo es el guard `api`.
  */
 const corsConfig = defineConfig({
-  /**
-   * Enable or disable CORS handling globally.
-   */
   enabled: true,
 
   /**
-   * Validador dinámico de origen:
-   * 1. Si no hay origen (peticiones server-to-server o CLI), se permite.
-   * 2. Permite localhost, dominios del túnel y orígenes en allowlist.
-   * 3. Permite cualquier subdominio de Vercel (*.vercel.app) para soporte de Preview Deployments.
+   * Decide si un origen puede leer las respuestas:
+   * 1. Sin cabecera Origin (curl, servidor a servidor): se permite.
+   * 2. Origen exacto de la lista (locales fuera de producción + CORS_ALLOWED_ORIGINS).
+   * 3. Preview de Vercel de este proyecto y este equipo, si están configurados.
    */
-  origin: (requestOrigin) => {
-    if (!requestOrigin) {
+  origin: (origenPeticion) => {
+    if (!origenPeticion) {
       return true
     }
 
-    if (allowedOriginsList.includes(requestOrigin)) {
+    if (origenesExactos.has(origenPeticion)) {
       return true
     }
 
-    // Acepta vistas previas y despliegues de producción en Vercel
-    if (/^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(requestOrigin)) {
-      return true
-    }
-
-    return false
+    return regexPreviews !== null && regexPreviews.test(origenPeticion)
   },
 
-  /**
-   * HTTP methods accepted for cross-origin requests.
-   */
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-  /**
-   * Request headers allowed.
-   */
   headers: true,
 
   /**
-   * Response headers exposed to the browser.
+   * Cabeceras de respuesta legibles desde el navegador. Retry-After la envía el 429 del
+   * login (ADR 0004) y no es una cabecera "safelisted".
    */
-  exposeHeaders: ['Content-Range', 'X-Total-Count', 'Authorization'],
+  exposeHeaders: ['Content-Range', 'X-Total-Count', 'Retry-After'],
 
-  /**
-   * Allow cookies/authorization headers on cross-origin requests.
-   */
-  credentials: true,
+  credentials: false,
 
-  /**
-   * Cache CORS preflight response for N seconds.
-   */
   maxAge: 90,
 })
 

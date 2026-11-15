@@ -1,6 +1,7 @@
 import env from '#start/env'
 import app from '@adonisjs/core/services/app'
 import { defineConfig } from '@adonisjs/core/http'
+import proxyAddr from 'proxy-addr'
 
 /**
  * The app URL can be used in various places where you want to create absolute
@@ -18,6 +19,19 @@ export const http = defineConfig({
    * Useful to correlate logs and debug a request flow.
    */
   generateRequestId: true,
+
+  /**
+   * Proxies cuyo X-Forwarded-For se acepta para calcular request.ip() (ADR 0011).
+   * Por defecto solo loopback: cloudflared corre en la misma máquina. TRUSTED_PROXIES
+   * admite una lista CSV de IP, CIDR o nombres de proxy-addr (p. ej. "loopback,10.0.0.0/8").
+   * Se compila aquí porque AdonisJS trata un string como una sola entrada.
+   */
+  trustProxy: proxyAddr.compile(
+    (env.get('TRUSTED_PROXIES') ?? 'loopback')
+      .split(',')
+      .map((proxy) => proxy.trim())
+      .filter(Boolean)
+  ),
 
   /**
    * Allow HTTP method spoofing via the "_method" form/query parameter.

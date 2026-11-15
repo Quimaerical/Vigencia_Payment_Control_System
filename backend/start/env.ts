@@ -38,4 +38,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   // CORS & Networking
   CORS_ALLOWED_ORIGINS: Env.schema.string.optional(),
   TUNNEL_HOSTNAME: Env.schema.string.optional(),
+  CORS_VERCEL_PREVIEW_PREFIX: Env.schema.string.optional(),
+  CORS_VERCEL_TEAM_SLUG: Env.schema.string.optional(),
+  TRUSTED_PROXIES: Env.schema.string.optional(),
 })
