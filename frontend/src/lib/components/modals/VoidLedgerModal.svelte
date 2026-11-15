@@ -3,22 +3,27 @@
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
 
 	let motivoForense = $state('');
+	let isSubmitting = $state(false);
 
-	function handleConfirm() {
-		if (!motivoForense.trim()) {
-			workspaceStore.showToast('Debe ingresar un motivo forense obligatorio', 'warning');
+	async function handleConfirm() {
+		if (motivoForense.trim().length < 5) {
+			workspaceStore.showToast(
+				'Debe ingresar un motivo forense obligatorio (mínimo 5 caracteres)',
+				'warning'
+			);
 			return;
 		}
 
 		if (financialStore.selectedAsiento) {
 			const id = financialStore.selectedAsiento.id;
-			financialStore.anularAsiento(id, motivoForense.trim());
-			workspaceStore.showToast(
-				`Asiento ${id} anulado. Emitida Nota de Crédito Reversa`,
-				'done_all'
-			);
-			financialStore.closeVoidModal();
-			motivoForense = '';
+			isSubmitting = true;
+			const ok = await financialStore.anularAsiento(id, motivoForense.trim());
+			isSubmitting = false;
+
+			if (ok) {
+				financialStore.closeVoidModal();
+				motivoForense = '';
+			}
 		}
 	}
 </script>
@@ -50,8 +55,8 @@
 			<div
 				class="rounded-xl border border-amber-400/30 bg-amber-500/10 p-2.5 text-[11px] leading-tight text-amber-200"
 			>
-				Principio de inmutabilidad: el asiento original no se borrará. Se generará una Nota de
-				Crédito Reversa.
+				Principio de inmutabilidad: el asiento original no se borrará. Se registrará su anulación y
+				se restaurarán los saldos de deuda FIFO.
 			</div>
 
 			<div class="space-y-2 text-[11px]">
@@ -80,7 +85,7 @@
 				</div>
 				<div>
 					<label for="modal-motivo-forense" class="mb-0.5 block text-[11px] font-bold text-white">
-						Motivo Forense <span class="text-rose-400">* (Obligatorio)</span>
+						Motivo Forense <span class="text-rose-400">* (Mínimo 5 caracteres)</span>
 					</label>
 					<textarea
 						id="modal-motivo-forense"
@@ -99,11 +104,12 @@
 					Cancelar
 				</button>
 				<button
-					class="flex items-center gap-1 rounded-xl bg-rose-600 px-3.5 py-1.5 font-bold text-white shadow-md shadow-rose-600/30 transition-all hover:bg-rose-500 active:scale-95"
+					disabled={isSubmitting}
+					class="flex items-center gap-1 rounded-xl bg-rose-600 px-3.5 py-1.5 font-bold text-white shadow-md shadow-rose-600/30 transition-all hover:bg-rose-500 active:scale-95 disabled:opacity-50"
 					onclick={handleConfirm}
 				>
 					<span class="material-symbols-outlined text-[15px]">done_all</span>
-					<span>Emitir Reverso</span>
+					<span>{isSubmitting ? 'Procesando...' : 'Emitir Reverso'}</span>
 				</button>
 			</div>
 		</div>

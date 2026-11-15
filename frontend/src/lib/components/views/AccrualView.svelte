@@ -1,10 +1,28 @@
 <script lang="ts">
 	import { financialStore } from '../../stores/financialStore.svelte';
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
+	import { catalogStore } from '../../stores/catalogStore.svelte';
+	import { authStore } from '../../stores/authStore.svelte';
 
 	let diasActivos = $state(22);
 	let diasPeriodo = $state(30);
 	let baseUsd = $state(2500);
+	let factorBackend = $state<number | null>(null);
+
+	// Parámetros para generación de Lote de Causación (/api/v1/causaciones/lote)
+	let loteProyectoId = $state<number>(0);
+	let loteGrupoId = $state<number>(0);
+	let loteInicio = $state(new Date(Date.now() - 14 * 86400000).toISOString().substring(0, 10));
+	let loteFin = $state(new Date().toISOString().substring(0, 10));
+	let loteCrearSolicitud = $state(false);
+	let loteCodigoSolicitud = $state(`SOL-LOTE-${Math.floor(1000 + Math.random() * 9000)}`);
+	let motivoAnulacionDeudaMap = $state<Record<number, string>>({});
+
+	$effect(() => {
+		if (!loteProyectoId) {
+			loteProyectoId = workspaceStore.activeProjectId || catalogStore.proyectos[0]?.id || 1;
+		}
+	});
 
 	let montoCausadoComputado = $derived(
 		financialStore.calcularProrrateo(diasActivos, diasPeriodo, baseUsd)
@@ -13,6 +31,40 @@
 	let totalEnTramite = $derived(
 		financialStore.asignaciones.reduce((acc, a) => acc + a.montoCausadoUsd, 0)
 	);
+
+	async function handleSimularBackend() {
+		const res = await financialStore.simularProrrateoBackend(baseUsd, diasActivos, diasPeriodo);
+		if (res) {
+			factorBackend = res.factorProrrateo;
+			workspaceStore.showToast(
+				`Simulación Backend: $${res.montoCausado.toFixed(2)} USD (Factor: ${res.factorProrrateo})`,
+				'calculate'
+			);
+		}
+	}
+
+	async function handleGenerarLote() {
+		await financialStore.generarLoteCausacion({
+			proyectoId: Number(loteProyectoId || workspaceStore.activeProjectId || 1),
+			grupoPagoId: loteGrupoId ? Number(loteGrupoId) : null,
+			periodoInicio: loteInicio,
+			periodoFin: loteFin,
+			crearSolicitud: loteCrearSolicitud,
+			codigoSolicitud: loteCrearSolicitud ? loteCodigoSolicitud.trim() : undefined
+		});
+	}
+
+	async function handleAnularCausacion(deudaId: number) {
+		const motivo = (motivoAnulacionDeudaMap[deudaId] || '').trim();
+		if (motivo.length < 5) {
+			workspaceStore.showToast('Ingrese un motivo de anulación (mínimo 5 caracteres)', 'warning');
+			return;
+		}
+		const ok = await financialStore.anularCausacion(deudaId, motivo);
+		if (ok) {
+			motivoAnulacionDeudaMap[deudaId] = '';
+		}
+	}
 </script>
 
 <section class="view-panel space-y-3.5" id="tab-accrual">
@@ -29,11 +81,13 @@
 					<p class="text-[11px] text-neutral-400">Dedicación científica sujeta a días reales</p>
 				</div>
 			</div>
-			<span
-				class="rounded-full border border-teal-400/30 bg-teal-400/15 px-2 py-0.5 font-mono text-[10px] font-bold text-teal-300"
+			<button
+				type="button"
+				class="rounded-full border border-teal-400/30 bg-teal-400/15 px-2.5 py-0.5 font-mono text-[10px] font-bold text-teal-300 hover:bg-teal-400/25"
+				onclick={handleSimularBackend}
 			>
-				Fórmula Real
-			</span>
+				Verificar en API {factorBackend !== null ? `(${factorBackend})` : ''}
+			</button>
 		</div>
 
 		<!-- Formula Display Callout -->
@@ -100,10 +154,79 @@
 	<!-- Batch Table of Scientific Researchers -->
 	<div class="chroma-glass-card space-y-3 rounded-2xl p-4">
 		<div class="flex items-center justify-between">
-			<h3 class="text-[13px] font-bold text-white">Asignaciones en Trámite</h3>
+			<h3 class="text-[13px] font-bold text-white">Causaciones y Asignaciones en Trámite</h3>
 			<span class="font-mono text-[10px] text-neutral-400">
 				Total: ${totalEnTramite.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
 			</span>
+		</div>
+
+		<!-- Parámetros del lote de causación (/api/v1/causaciones/lote) -->
+		<div
+			class="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-2.5 text-[11px] text-white"
+		>
+			<div>
+				<label for="lote-proy" class="block text-[10px] text-neutral-400">Proyecto para Lote</label>
+				<select
+					id="lote-proy"
+					class="w-full rounded border border-white/15 bg-neutral-900 px-2 py-1"
+					bind:value={loteProyectoId}
+				>
+					{#each catalogStore.proyectos as p (p.id)}
+						<option value={p.id}>{p.codigo} - {p.nombre}</option>
+					{:else}
+						{#each financialStore.proyectos as p (p.id)}
+							<option value={p.id}>{p.codigo} - {p.nombre}</option>
+						{/each}
+					{/each}
+				</select>
+			</div>
+			<div>
+				<label for="lote-grp" class="block text-[10px] text-neutral-400"
+					>Grupo de Pago (opcional)</label
+				>
+				<select
+					id="lote-grp"
+					class="w-full rounded border border-white/15 bg-neutral-900 px-2 py-1"
+					bind:value={loteGrupoId}
+				>
+					<option value={0}>Todos los grupos</option>
+					{#each catalogStore.gruposPago as g (g.id)}
+						<option value={g.id}>{g.nombre}</option>
+					{/each}
+				</select>
+			</div>
+			<div>
+				<label for="lote-ini" class="block text-[10px] text-neutral-400">Período Inicio</label>
+				<input
+					id="lote-ini"
+					type="date"
+					class="w-full rounded border border-white/15 bg-neutral-900 px-2 py-1 font-mono"
+					bind:value={loteInicio}
+				/>
+			</div>
+			<div>
+				<label for="lote-fin" class="block text-[10px] text-neutral-400">Período Fin</label>
+				<input
+					id="lote-fin"
+					type="date"
+					class="w-full rounded border border-white/15 bg-neutral-900 px-2 py-1 font-mono"
+					bind:value={loteFin}
+				/>
+			</div>
+			<div class="col-span-2 flex flex-wrap items-center justify-between gap-2 pt-1">
+				<label class="flex items-center gap-1.5 text-[10px] text-neutral-300">
+					<input type="checkbox" bind:checked={loteCrearSolicitud} />
+					<span>Crear Solicitud de Pago automáticamente</span>
+				</label>
+				{#if loteCrearSolicitud}
+					<input
+						type="text"
+						placeholder="Código Solicitud"
+						class="rounded border border-white/15 bg-neutral-900 px-2 py-0.5 font-mono text-[10px]"
+						bind:value={loteCodigoSolicitud}
+					/>
+				{/if}
+			</div>
 		</div>
 
 		<div class="space-y-2.5">
@@ -142,21 +265,49 @@
 									? 'text-amber-400'
 									: 'text-teal-300'}"
 							>
-								● {asig.estado === 'pendiente' ? 'Pendiente' : 'Abonado'}
+								● {asig.estado === 'pendiente'
+									? 'Pendiente'
+									: asig.estado === 'liquidado'
+										? 'Liquidado'
+										: 'Abonado'}
 							</span>
 						</div>
 					</div>
+
+					{#if asig.deudaId && asig.estado === 'pendiente' && !authStore.esAdmin}
+						<div
+							class="flex items-center justify-end gap-1.5 border-t border-white/10 pt-1.5 text-[10px]"
+						>
+							<input
+								type="text"
+								placeholder="Motivo anulación causación..."
+								class="rounded border border-white/15 bg-neutral-900 px-2 py-0.5 text-white"
+								bind:value={motivoAnulacionDeudaMap[asig.deudaId]}
+							/>
+							<button
+								type="button"
+								class="rounded border border-rose-500/30 bg-rose-500/20 px-2 py-0.5 font-mono text-rose-300 hover:bg-rose-500/30"
+								onclick={() => asig.deudaId && handleAnularCausacion(asig.deudaId)}
+							>
+								Anular Causación
+							</button>
+						</div>
+					{/if}
 				</div>
 			{/each}
 		</div>
 
 		<button
-			class="interactive-spring flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-mint-400 py-2.5 text-[12px] font-bold text-neutral-950 shadow-[0_0_16px_rgba(20,184,166,0.3)] transition-all active:scale-98"
-			onclick={() =>
-				workspaceStore.showToast('Planilla de causación generada y registrada en auditoría')}
+			disabled={!authStore.esGenerador}
+			class="interactive-spring flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-mint-400 py-2.5 text-[12px] font-bold text-neutral-950 shadow-[0_0_16px_rgba(20,184,166,0.3)] transition-all active:scale-98 disabled:opacity-40"
+			onclick={handleGenerarLote}
 		>
 			<span class="material-symbols-outlined text-[17px]">post_add</span>
-			<span>Generar Nueva Planilla de Causación</span>
+			<span>
+				Generar Nueva Planilla de Causación por Lote {authStore.esGenerador
+					? ''
+					: '(Rol Generador)'}
+			</span>
 		</button>
 	</div>
 </section>

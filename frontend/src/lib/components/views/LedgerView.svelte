@@ -132,20 +132,34 @@
 					<div
 						class="border-t pt-1.5 {asiento.estado === 'anulado'
 							? 'border-rose-500/20'
-							: 'border-white/10'} flex items-center justify-between"
+							: 'border-white/10'} flex flex-wrap items-center justify-between gap-2"
 					>
 						<span class="font-mono text-[10px] text-neutral-400">
 							Hash: <code class="opacity-75">{asiento.hashSha256.substring(0, 8)}...</code>
 						</span>
-						{#if asiento.estado !== 'anulado'}
-							<button
-								class="flex items-center gap-1 rounded-lg border border-rose-500/20 bg-rose-500/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-rose-300 transition-all hover:bg-rose-500/25 active:scale-95"
-								onclick={() => financialStore.openVoidModal(asiento.id, asiento.montoUsd)}
-							>
-								<span class="material-symbols-outlined text-[13px]">block</span>
-								<span>Anular con Reverso</span>
-							</button>
-						{/if}
+						<div class="flex items-center gap-1.5">
+							{#if asiento.pagoId}
+								<button
+									type="button"
+									class="flex items-center gap-1 rounded-lg border border-teal-500/30 bg-teal-500/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-teal-300 hover:bg-teal-500/25"
+									onclick={() =>
+										asiento.pagoId && financialStore.descargarReciboPagoPdf(asiento.pagoId)}
+								>
+									<span class="material-symbols-outlined text-[13px]">picture_as_pdf</span>
+									<span>Recibo PDF</span>
+								</button>
+							{/if}
+							{#if asiento.estado !== 'anulado'}
+								<button
+									class="flex items-center gap-1 rounded-lg border border-rose-500/20 bg-rose-500/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-rose-300 transition-all hover:bg-rose-500/25 active:scale-95"
+									onclick={() =>
+										financialStore.openVoidModal(asiento.id, asiento.montoUsd, asiento.pagoId)}
+								>
+									<span class="material-symbols-outlined text-[13px]">block</span>
+									<span>Anular con Reverso</span>
+								</button>
+							{/if}
+						</div>
 					</div>
 				</div>
 			{/each}

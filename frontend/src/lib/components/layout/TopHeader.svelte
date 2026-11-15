@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
 	import { financialStore } from '../../stores/financialStore.svelte';
+	import { authStore } from '../../stores/authStore.svelte';
 	import { RolUsuario } from '@app/shared';
 
 	let activeProject = $derived(
@@ -43,6 +44,20 @@
 
 		<!-- Top Action Controls -->
 		<div class="flex items-center gap-1.5">
+			<!-- Login / Session Button -->
+			<button
+				class="flex items-center gap-1 rounded-xl border border-white/15 bg-white/5 px-2.5 py-1.5 font-mono text-[10px] text-teal-300 hover:bg-white/10"
+				onclick={() => (workspaceStore.loginModalOpen = true)}
+				title="Autenticación de Usuario"
+			>
+				<span class="material-symbols-outlined text-[15px]">
+					{authStore.isAuthenticated ? 'verified_user' : 'login'}
+				</span>
+				<span>
+					{authStore.usuarioActual ? authStore.usuarioActual.username : 'Login'}
+				</span>
+			</button>
+
 			<!-- Customize Workspace Mode Toggle Button -->
 			<button
 				class="text-body-sm interactive-spring flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 shadow-[0_0_12px_rgba(45,212,191,0.15)] transition-all {workspaceStore.isCustomizing
@@ -89,7 +104,7 @@
 				RolUsuario.ADMINISTRADOR
 					? 'bg-teal-500 text-neutral-950 shadow-[0_0_10px_rgba(20,184,166,0.4)]'
 					: 'text-neutral-400 hover:text-teal-300'}"
-				onclick={() => workspaceStore.setRole(RolUsuario.ADMINISTRADOR)}
+				onclick={() => authStore.switchRoleOrQuickLogin(RolUsuario.ADMINISTRADOR)}
 			>
 				Admin
 			</button>
@@ -98,7 +113,7 @@
 				RolUsuario.GENERADOR
 					? 'bg-teal-500 text-neutral-950 shadow-[0_0_10px_rgba(20,184,166,0.4)]'
 					: 'text-neutral-400 hover:text-teal-300'}"
-				onclick={() => workspaceStore.setRole(RolUsuario.GENERADOR)}
+				onclick={() => authStore.switchRoleOrQuickLogin(RolUsuario.GENERADOR)}
 			>
 				Generador
 			</button>
@@ -107,17 +122,20 @@
 				RolUsuario.RECEPTOR
 					? 'bg-teal-500 text-neutral-950 shadow-[0_0_10px_rgba(20,184,166,0.4)]'
 					: 'text-neutral-400 hover:text-teal-300'}"
-				onclick={() => workspaceStore.setRole(RolUsuario.RECEPTOR)}
+				onclick={() => authStore.switchRoleOrQuickLogin(RolUsuario.RECEPTOR)}
 			>
 				Tesorero
 			</button>
 		</div>
 
-		<div
-			class="flex max-w-[160px] items-center gap-1 truncate rounded-lg border border-white/15 bg-white/5 px-2 py-1 font-mono text-[11px] text-teal-300"
+		<select
+			aria-label="Proyecto activo"
+			class="max-w-[180px] truncate rounded-lg border border-white/15 bg-neutral-900 px-2 py-1 font-mono text-[11px] text-teal-300"
+			bind:value={workspaceStore.activeProjectId}
 		>
-			<span class="material-symbols-outlined text-[14px]">science</span>
-			<span class="truncate">{activeProject ? activeProject.nombre : 'FQ-2025 Quincena 10'}</span>
-		</div>
+			{#each financialStore.proyectos as proy (proy.id)}
+				<option value={proy.id}>{proy.codigo} - {proy.nombre}</option>
+			{/each}
+		</select>
 	</div>
 </header>

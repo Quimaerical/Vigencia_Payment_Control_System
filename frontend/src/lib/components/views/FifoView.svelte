@@ -4,6 +4,23 @@
 
 	let deudas = $derived(financialStore.deudasFifo);
 	let deudaPendienteTotal = $derived(deudas.reduce((acc, d) => acc + d.saldoPendiente, 0));
+	let beneficiarioPrincipal = $derived(
+		deudas.find((d) => d.saldoPendiente > 0)?.beneficiarioNombre ||
+			deudas[0]?.beneficiarioNombre ||
+			'Dra. Elena Rostova'
+	);
+
+	function handleDescargarUltimoRecibo() {
+		const ultimoPago = financialStore.pagosRaw[0];
+		if (ultimoPago) {
+			void financialStore.descargarReciboPagoPdf(ultimoPago.id);
+		} else {
+			workspaceStore.showToast(
+				'No hay pagos registrados en el servidor para emitir recibo PDF',
+				'info'
+			);
+		}
+	}
 </script>
 
 <section class="view-panel space-y-3.5" id="tab-fifo">
@@ -33,7 +50,7 @@
 		>
 			<div>
 				<span class="block text-[10px] text-neutral-400">Beneficiario Activo</span>
-				<span class="font-bold text-white">Dra. Elena Rostova</span>
+				<span class="font-bold text-white">{beneficiarioPrincipal}</span>
 			</div>
 			<div class="text-right">
 				<span class="block text-[10px] text-neutral-400">Deuda Consolidada</span>
@@ -152,9 +169,8 @@
 			</button>
 			<button
 				class="interactive-spring flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white transition-all hover:bg-white/10 active:scale-95"
-				onclick={() =>
-					workspaceStore.showToast('Comprobante fiscal PDF preparado', 'picture_as_pdf')}
-				title="Descargar Comprobante PDF"
+				onclick={handleDescargarUltimoRecibo}
+				title="Descargar Recibo PDF del último pago"
 			>
 				<span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
 			</button>

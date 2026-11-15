@@ -1,19 +1,32 @@
 <script lang="ts">
 	import { financialStore } from '../../stores/financialStore.svelte';
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
-	import { MetodoPago } from '@app/shared';
+	import { EstadoSolicitud, MetodoPago } from '@app/shared';
 
 	let montoPagar = $state(0);
 	let metodoSeleccionado = $state<MetodoPago>(MetodoPago.TRANSFERENCIA);
 	let referencia = $state('');
+	let fechaPago = $state(new Date().toISOString().substring(0, 10));
+	let solicitudId = $state<number | null>(null);
+	let isSubmitting = $state(false);
+
+	let solicitudesElegibles = $derived(
+		financialStore.solicitudesPago.filter(
+			(s) =>
+				(!financialStore.selectedDeudaForPayment ||
+					s.proyectoId === financialStore.selectedDeudaForPayment.proyectoId) &&
+				(s.estado === EstadoSolicitud.APROBACION || s.estado === EstadoSolicitud.ENTREGA)
+		)
+	);
 
 	$effect(() => {
 		if (financialStore.selectedDeudaForPayment) {
 			montoPagar = financialStore.selectedDeudaForPayment.saldoPendiente;
+			solicitudId = financialStore.selectedDeudaForPayment.solicitudId ?? null;
 		}
 	});
 
-	function handlePagar() {
+	async function handlePagar() {
 		if (montoPagar <= 0) {
 			workspaceStore.showToast('El monto debe ser superior a 0.00 USD', 'warning');
 			return;
@@ -21,12 +34,25 @@
 
 		if (financialStore.selectedDeudaForPayment) {
 			const deuda = financialStore.selectedDeudaForPayment;
-			financialStore.registrarAmortizacionLocal(deuda.id, montoPagar);
-			workspaceStore.showToast(
-				`Desembolso FIFO aplicado: $${montoPagar.toFixed(2)} USD amortizados`,
-				'verified'
+			isSubmitting = true;
+			const ok = await financialStore.procesarPagoFifo(
+				{
+					personaId: deuda.personaId,
+					proyectoId: deuda.proyectoId,
+					solicitudId: solicitudId ? Number(solicitudId) : null,
+					montoTotal: Number(montoPagar),
+					metodoPago: metodoSeleccionado,
+					numeroReferencia: referencia.trim() ? referencia.trim() : null,
+					fechaPago
+				},
+				deuda.id
 			);
-			financialStore.closeFifoPaymentModal();
+			isSubmitting = false;
+
+			if (ok) {
+				referencia = '';
+				financialStore.closeFifoPaymentModal();
+			}
 		}
 	}
 </script>
@@ -77,32 +103,68 @@
 						type="number"
 						bind:value={montoPagar}
 						min="0.01"
-						max={financialStore.selectedDeudaForPayment.saldoPendiente}
 						step="0.01"
 					/>
 				</div>
 
-				<div>
-					<label for="modal-metodo-pago" class="mb-0.5 block font-mono text-[10px] text-neutral-400"
-						>Método de Pago</label
-					>
-					<select
-						id="modal-metodo-pago"
-						class="w-full rounded-xl border border-white/15 bg-neutral-900 px-2.5 py-1.5 font-mono text-white focus:ring-1 focus:ring-teal-400"
-						bind:value={metodoSeleccionado}
-					>
-						{#each Object.values(MetodoPago) as metodo (metodo)}
-							<option value={metodo}>{metodo.toUpperCase()}</option>
-						{/each}
-					</select>
+				<div class="grid grid-cols-2 gap-2">
+					<div>
+						<label
+							for="modal-metodo-pago"
+							class="mb-0.5 block font-mono text-[10px] text-neutral-400">Método de Pago</label
+						>
+						<select
+							id="modal-metodo-pago"
+							class="w-full rounded-xl border border-white/15 bg-neutral-900 px-2.5 py-1.5 font-mono text-white focus:ring-1 focus:ring-teal-400"
+							bind:value={metodoSeleccionado}
+						>
+							{#each Object.values(MetodoPago) as metodo (metodo)}
+								<option value={metodo}>{metodo.toUpperCase()}</option>
+							{/each}
+						</select>
+					</div>
+
+					<div>
+						<label
+							for="modal-fecha-pago"
+							class="mb-0.5 block font-mono text-[10px] text-neutral-400">Fecha de Pago</label
+						>
+						<input
+							id="modal-fecha-pago"
+							class="w-full rounded-xl border border-white/15 bg-neutral-900 px-2.5 py-1.5 font-mono text-white"
+							type="date"
+							bind:value={fechaPago}
+						/>
+					</div>
 				</div>
+
+				{#if solicitudesElegibles.length > 0}
+					<div>
+						<label
+							for="modal-solicitud-pago"
+							class="mb-0.5 block font-mono text-[10px] text-neutral-400"
+						>
+							Solicitud de Pago Asociada (Opcional)
+						</label>
+						<select
+							id="modal-solicitud-pago"
+							class="w-full rounded-xl border border-white/15 bg-neutral-900 px-2.5 py-1.5 font-mono text-white"
+							bind:value={solicitudId}
+						>
+							<option value={null}>Sin solicitud vinculada</option>
+							{#each solicitudesElegibles as sol (sol.id)}
+								<option value={sol.id}>{sol.codigo} ({sol.estado.toUpperCase()})</option>
+							{/each}
+						</select>
+					</div>
+				{/if}
 
 				<div>
 					<label
 						for="modal-referencia-bancaria"
 						class="mb-0.5 block font-mono text-[10px] text-neutral-400"
 					>
-						Referencia / Comprobante
+						Referencia / Comprobante (Única)
 					</label>
 					<input
 						id="modal-referencia-bancaria"
@@ -122,11 +184,12 @@
 					Cancelar
 				</button>
 				<button
-					class="flex items-center gap-1 rounded-xl bg-gradient-to-r from-teal-500 to-mint-400 px-3.5 py-1.5 font-bold text-neutral-950 shadow-md shadow-teal-500/20 transition-all active:scale-95"
+					disabled={isSubmitting}
+					class="flex items-center gap-1 rounded-xl bg-gradient-to-r from-teal-500 to-mint-400 px-3.5 py-1.5 font-bold text-neutral-950 shadow-md shadow-teal-500/20 transition-all active:scale-95 disabled:opacity-50"
 					onclick={handlePagar}
 				>
 					<span class="material-symbols-outlined text-[15px]">send</span>
-					<span>Confirmar Pago FIFO</span>
+					<span>{isSubmitting ? 'Procesando...' : 'Confirmar Pago FIFO'}</span>
 				</button>
 			</div>
 		</div>

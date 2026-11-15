@@ -3,7 +3,8 @@ import { MOCK_DEFAULT_MODULES } from '../services/mockData';
 import type { ModuloWorkspace } from '../types/financial';
 import { RolUsuario } from '@app/shared';
 
-export type WorkspaceTab = 'overview' | 'ledger' | 'accrual' | 'fifo' | 'audit';
+export type WorkspaceTab =
+	'overview' | 'catalogs' | 'accrual' | 'requests' | 'fifo' | 'petty-cash' | 'ledger' | 'audit';
 
 class WorkspaceStore {
 	currentTab = $state<WorkspaceTab>('overview');
@@ -11,8 +12,13 @@ class WorkspaceStore {
 	isCustomizing = $state<boolean>(false);
 	isDarkMode = $state<boolean>(true);
 	isDrawerOpen = $state<boolean>(false);
+	loginModalOpen = $state<boolean>(false);
 	activeProjectId = $state<number>(1);
 	modules = $state<ModuloWorkspace[]>([]);
+
+	esAdmin = $derived(this.currentRole === RolUsuario.ADMINISTRADOR);
+	esGenerador = $derived(this.currentRole === RolUsuario.GENERADOR);
+	esReceptor = $derived(this.currentRole === RolUsuario.RECEPTOR);
 
 	toast = $state<{
 		visible: boolean;
