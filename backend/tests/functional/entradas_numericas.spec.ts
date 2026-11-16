@@ -154,4 +154,36 @@ test.group('Entradas numéricas (M1, ADR 0015)', (group) => {
     const sinParametros = await client.get('/api/v1/audit-logs').loginAs(admin)
     assert.equal(sinParametros.status(), 200)
   })
+
+  test('cuerpos JSON rechazan IDs fuera de INTEGER o decimales y montos fuera de DECIMAL(12,2) con 422', async ({
+    client,
+    assert,
+  }) => {
+    const generador = await crearUsuario(RolUsuario.GENERADOR, 'gen_body')
+    const receptor = await crearUsuario(RolUsuario.RECEPTOR, 'rec_body')
+
+    const respAsig = await client.post('/api/v1/asignaciones').loginAs(generador).json({
+      personaId: 2_147_483_648,
+      proyectoId: 1.5,
+      grupoPagoId: 1,
+      montoPeriodo: 1e12,
+      fechaInicio: '2026-01-01',
+    })
+    assert.equal(respAsig.status(), 422)
+    assert.includeMembers(camposConError(respAsig.body()), [
+      'personaId',
+      'proyectoId',
+      'montoPeriodo',
+    ])
+
+    const respPago = await client.post('/api/v1/pagos').loginAs(receptor).json({
+      personaId: 9_999_999_999,
+      proyectoId: 1,
+      montoTotal: 10_000_000_000,
+      metodoPago: 'transferencia',
+      fechaPago: '2026-01-15',
+    })
+    assert.equal(respPago.status(), 422)
+    assert.includeMembers(camposConError(respPago.body()), ['personaId', 'montoTotal'])
+  })
 })

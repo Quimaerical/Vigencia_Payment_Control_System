@@ -1,5 +1,6 @@
 import vine from '@vinejs/vine'
 import { AreaProyecto, AmbitoProyecto, PeriodicidadGrupoPago } from '@app/shared'
+import { idEnteroPositivo, montoPositivo } from '#validators/filtros'
 
 const isoDateString = () =>
   vine
@@ -78,8 +79,8 @@ export const crearGrupoPagoValidator = vine.create({
     .unique({ table: 'grupos_pagos', column: 'nombre' }),
   descripcion: vine.string().trim().maxLength(500).nullable().optional(),
   periodicidad: vine.enum(Object.values(PeriodicidadGrupoPago)),
-  diaCorte1: vine.number().min(1).max(31).nullable().optional(),
-  diaCorte2: vine.number().min(1).max(31).nullable().optional(),
+  diaCorte1: vine.number().withoutDecimals().min(1).max(31).nullable().optional(),
+  diaCorte2: vine.number().withoutDecimals().min(1).max(31).nullable().optional(),
   configuracionCorte: vine.record(vine.any()).nullable().optional(),
   estaActivo: vine.boolean().optional(),
 })
@@ -88,8 +89,8 @@ export const actualizarGrupoPagoValidator = vine.create({
   nombre: vine.string().trim().minLength(2).maxLength(100).optional(),
   descripcion: vine.string().trim().maxLength(500).nullable().optional(),
   periodicidad: vine.enum(Object.values(PeriodicidadGrupoPago)).optional(),
-  diaCorte1: vine.number().min(1).max(31).nullable().optional(),
-  diaCorte2: vine.number().min(1).max(31).nullable().optional(),
+  diaCorte1: vine.number().withoutDecimals().min(1).max(31).nullable().optional(),
+  diaCorte2: vine.number().withoutDecimals().min(1).max(31).nullable().optional(),
   configuracionCorte: vine.record(vine.any()).nullable().optional(),
   estaActivo: vine.boolean().optional(),
 })
@@ -98,17 +99,17 @@ export const actualizarGrupoPagoValidator = vine.create({
  * Validadores para Asignaciones (Persona + Proyecto + Grupo de Pago + Monto por Período)
  */
 export const crearAsignacionValidator = vine.create({
-  personaId: vine.number().positive(),
-  proyectoId: vine.number().positive(),
-  grupoPagoId: vine.number().positive(),
-  montoPeriodo: vine.number().positive().min(0.01),
+  personaId: idEnteroPositivo(),
+  proyectoId: idEnteroPositivo(),
+  grupoPagoId: idEnteroPositivo(),
+  montoPeriodo: montoPositivo(),
   fechaInicio: isoDateString(),
   fechaFin: isoDateString().nullable().optional(),
   estaActivo: vine.boolean().optional(),
 })
 
 export const actualizarAsignacionValidator = vine.create({
-  montoPeriodo: vine.number().positive().min(0.01).optional(),
+  montoPeriodo: montoPositivo().optional(),
   fechaInicio: isoDateString().optional(),
   fechaFin: isoDateString().nullable().optional(),
   estaActivo: vine.boolean().optional(),

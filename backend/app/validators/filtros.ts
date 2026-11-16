@@ -4,13 +4,35 @@ import vine from '@vinejs/vine'
  * Máximo de una columna INTEGER de PostgreSQL (todas las PK son increments()).
  * Un valor mayor llegaría a la BD como error 22003 → 500 (hallazgo M1, ADR 0015).
  */
-const MAX_INTEGER_PG = 2_147_483_647
+export const MAX_INTEGER_PG = 2_147_483_647
+
+/**
+ * Máximo representable en columnas DECIMAL(12, 2) de PostgreSQL.
+ */
+export const MAX_MONTO_DECIMAL = 9_999_999_999.99
+
+/**
+ * Id entero positivo dentro del rango de INTEGER de PostgreSQL.
+ */
+export const idEnteroPositivo = () => vine.number().withoutDecimals().min(1).max(MAX_INTEGER_PG)
+
+/**
+ * Montos monetarios acotados a DECIMAL(12, 2).
+ */
+export const montoPositivo = () => vine.number().positive().min(0.01).max(MAX_MONTO_DECIMAL)
+export const montoNoNegativo = () => vine.number().min(0).max(MAX_MONTO_DECIMAL)
+
+/**
+ * Días enteros acotados para cálculos de prorrateo (máx. ~100 años).
+ */
+export const diasEnterosPositivos = () => vine.number().withoutDecimals().min(1).max(36_600)
+export const diasEnterosNoNegativos = () => vine.number().withoutDecimals().min(0).max(36_600)
 
 /**
  * Id usado como filtro de query: entero positivo dentro del rango de INTEGER.
  * La query llega como texto; VineJS lo convierte y rechaza 'x', '', '1.5', '0' → 422.
  */
-const idFiltro = () => vine.number().withoutDecimals().min(1).max(MAX_INTEGER_PG).optional()
+const idFiltro = () => idEnteroPositivo().optional()
 
 /**
  * Filas por página: por defecto y máximo de todos los listados (hallazgo B1, ADR 0019).
@@ -23,7 +45,7 @@ export const LIMITE_MAXIMO = 100
  * Un valor fuera de rango, decimal o texto responde 422; nunca se recorta en silencio.
  */
 const paginacion = {
-  pagina: vine.number().withoutDecimals().min(1).max(MAX_INTEGER_PG).optional(),
+  pagina: idEnteroPositivo().optional(),
   limite: vine.number().withoutDecimals().min(1).max(LIMITE_MAXIMO).optional(),
 }
 
