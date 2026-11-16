@@ -330,6 +330,36 @@ export default class PagosController {
         })
       }
 
+      const solicitudIds = new Set<number>()
+      if (pago.solicitudId) {
+        solicitudIds.add(pago.solicitudId)
+      }
+      const deudaIds = pago.prorrateos.map((pr) => pr.deudaId)
+      if (deudaIds.length > 0) {
+        const deudasConSolicitud = await Deuda.query({ client: trx })
+          .whereIn('id', deudaIds)
+          .whereNotNull('solicitud_id')
+          .select('solicitud_id')
+        for (const d of deudasConSolicitud) {
+          if (d.solicitudId) solicitudIds.add(d.solicitudId)
+        }
+      }
+      if (solicitudIds.size > 0) {
+        const solicitudCerrada = await SolicitudPago.query({ client: trx })
+          .forUpdate()
+          .whereIn('id', [...solicitudIds])
+          .where('estado', EstadoSolicitud.CIERRE)
+          .first()
+
+        if (solicitudCerrada) {
+          return response.status(422).json({
+            codigo: 'SOLICITUD_YA_CERRADA',
+            mensaje:
+              'No se puede anular un pago cuyas causaciones pertenecen a una solicitud de pago ya cerrada.',
+          })
+        }
+      }
+
       pago.estado = EstadoPago.ANULADO
       pago.motivoAnulacion = motivoAnulacion
       pago.anuladoPorId = usuario.id

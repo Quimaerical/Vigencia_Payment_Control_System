@@ -522,4 +522,155 @@ test.group('[concurrencia] Seguridad y causación por lote simultánea', () => {
     const respDespues = await client.get('/api/v1/proyectos').bearerToken(bearer)
     respDespues.assertStatus(401)
   })
+
+  test('impide anular pagos de solicitudes cerradas y vales de cajas chicas cerradas', async ({
+    client,
+    assert,
+  }) => {
+    const sufijo = Date.now()
+    const admin = await Usuario.create({
+      username: `adm_cierre_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.ADMINISTRADOR,
+      estaActivo: true,
+    })
+    const generador = await Usuario.create({
+      username: `gen_cierre_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.GENERADOR,
+      estaActivo: true,
+    })
+    const receptor = await Usuario.create({
+      username: `rec_cierre_${sufijo}`,
+      passwordHash: 'PasswordSeguro123!',
+      rol: RolUsuario.RECEPTOR,
+      estaActivo: true,
+    })
+
+    const respGrupo = await client
+      .post('/api/v1/grupos-pago')
+      .loginAs(admin)
+      .json({
+        nombre: `Mensual-Cierre-${sufijo}`,
+        periodicidad: PeriodicidadGrupoPago.MENSUAL,
+        diaCorte1: 30,
+      })
+    respGrupo.assertStatus(201)
+    const grupoPagoId = (respGrupo.body() as { data: { id: number } }).data.id
+
+    const respPersona = await client
+      .post('/api/v1/personas')
+      .loginAs(generador)
+      .json({
+        identificacion: `V-CIE-${sufijo}`,
+        nombres: 'Lucia',
+        apellidos: 'Ramos',
+      })
+    respPersona.assertStatus(201)
+    const personaId = (respPersona.body() as { data: { id: number } }).data.id
+
+    const respProyecto = await client
+      .post('/api/v1/proyectos')
+      .loginAs(generador)
+      .json({
+        codigo: `PROY-CIE-${sufijo}`,
+        nombre: 'Proyecto Cierre Contable',
+        area: AreaProyecto.FISICA,
+        ambito: AmbitoProyecto.INTERNO,
+      })
+    respProyecto.assertStatus(201)
+    const proyectoId = (respProyecto.body() as { data: { id: number } }).data.id
+
+    await client.post('/api/v1/asignaciones').loginAs(generador).json({
+      personaId,
+      proyectoId,
+      grupoPagoId,
+      montoPeriodo: 100,
+      fechaInicio: '2026-06-01',
+    })
+
+    const respLote = await client
+      .post('/api/v1/causaciones/lote')
+      .loginAs(generador)
+      .json({
+        proyectoId,
+        grupoPagoId,
+        periodoInicio: '2026-06-01',
+        periodoFin: '2026-06-30',
+        crearSolicitud: true,
+        codigoSolicitud: `SOL-CIE-${sufijo}`,
+      })
+    respLote.assertStatus(201)
+    const solicitudId = (respLote.body() as { solicitudPago: { id: number } }).solicitudPago.id
+
+    await client.patch(`/api/v1/solicitudes-pago/${solicitudId}/enviar`).loginAs(generador)
+    await client.patch(`/api/v1/solicitudes-pago/${solicitudId}/aprobar`).loginAs(receptor)
+
+    const respPago = await client.post('/api/v1/pagos').loginAs(receptor).json({
+      personaId,
+      proyectoId,
+      solicitudId,
+      montoTotal: 100,
+      metodoPago: MetodoPago.TRANSFERENCIA,
+      fechaPago: '2026-06-30',
+    })
+    respPago.assertStatus(201)
+    const pagoId = (respPago.body() as { pagoId: number }).pagoId
+
+    const respCerrarSol = await client
+      .patch(`/api/v1/solicitudes-pago/${solicitudId}/cerrar`)
+      .loginAs(generador)
+    respCerrarSol.assertStatus(200)
+
+    const respAnularPagoCerrado = await client
+      .post(`/api/v1/pagos/${pagoId}/anular`)
+      .loginAs(receptor)
+      .json({ motivoAnulacion: 'Intento de reverso sobre solicitud ya cerrada' })
+    respAnularPagoCerrado.assertStatus(422)
+    assert.equal(
+      (respAnularPagoCerrado.body() as { codigo: string }).codigo,
+      'SOLICITUD_YA_CERRADA'
+    )
+
+    // Caja chica cerrada impide anular sus vales
+    const respCaja = await client
+      .post('/api/v1/cajas-chicas')
+      .loginAs(generador)
+      .json({
+        codigo: `CAJA-CIE-${sufijo}`,
+        nombre: 'Caja Cierre',
+        proyectoId,
+        anio: 2026,
+        mes: 6,
+        montoAsignado: 150,
+      })
+    respCaja.assertStatus(201)
+    const cajaId = (respCaja.body() as { data: { id: number } }).data.id
+
+    const respVale = await client
+      .post(`/api/v1/cajas-chicas/${cajaId}/vales`)
+      .loginAs(generador)
+      .json({ solicitantePersonaId: personaId, montoSolicitado: 50, concepto: 'Insumos' })
+    respVale.assertStatus(201)
+    const valeId = (respVale.body() as { data: { id: number } }).data.id
+
+    await client.patch(`/api/v1/vales-caja/${valeId}/aprobar`).loginAs(receptor)
+    await client.patch(`/api/v1/vales-caja/${valeId}/desembolsar`).loginAs(receptor)
+    await client.patch(`/api/v1/vales-caja/${valeId}/rendir`).loginAs(receptor).json({
+      montoRendido: 40,
+      comprobanteReferencia: 'FAC-CIE-01',
+    })
+
+    const respCerrarCaja = await client
+      .patch(`/api/v1/cajas-chicas/${cajaId}/cerrar`)
+      .loginAs(generador)
+    respCerrarCaja.assertStatus(200)
+
+    const respAnularValeCerrado = await client
+      .post(`/api/v1/vales-caja/${valeId}/anular`)
+      .loginAs(receptor)
+      .json({ motivoAnulacion: 'Intento de anular vale tras cierre y arrastre' })
+    respAnularValeCerrado.assertStatus(422)
+    assert.equal((respAnularValeCerrado.body() as { codigo: string }).codigo, 'CAJA_CHICA_CERRADA')
+  })
 })

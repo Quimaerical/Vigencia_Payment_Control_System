@@ -534,6 +534,13 @@ export default class CajasChicasController {
         .where('id', vale.cajaChicaId)
         .firstOrFail()
 
+      if (caja.estado === EstadoCajaChica.CERRADA) {
+        return response.status(422).json({
+          codigo: 'CAJA_CHICA_CERRADA',
+          mensaje: 'No se puede anular un vale perteneciente a una caja chica ya cerrada.',
+        })
+      }
+
       if (vale.estado === EstadoValeCaja.DESEMBOLSADO) {
         caja.saldoActual = Number(
           (Number(caja.saldoActual) + Number(vale.montoSolicitado)).toFixed(2)
