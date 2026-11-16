@@ -3,14 +3,16 @@ import { MOCK_DEFAULT_MODULES } from '../services/mockData';
 import type { ModuloWorkspace } from '../types/financial';
 import { RolUsuario } from '@app/shared';
 
-export type WorkspaceTab = 'overview' | 'ledger' | 'accrual' | 'fifo' | 'audit';
+export type WorkspaceTab =
+	'overview' | 'catalogs' | 'accrual' | 'requests' | 'fifo' | 'petty-cash' | 'ledger' | 'audit';
 
 class WorkspaceStore {
 	currentTab = $state<WorkspaceTab>('overview');
-	currentRole = $state<RolUsuario>(RolUsuario.ADMINISTRADOR);
+	currentRole = $state<RolUsuario | null>(null);
 	isCustomizing = $state<boolean>(false);
 	isDarkMode = $state<boolean>(true);
 	isDrawerOpen = $state<boolean>(false);
+	loginModalOpen = $state<boolean>(false);
 	activeProjectId = $state<number>(1);
 	modules = $state<ModuloWorkspace[]>([]);
 
@@ -40,12 +42,6 @@ class WorkspaceStore {
 		const cachedTab = StorageService.loadSnapshot<WorkspaceTab>('current_tab', 'overview');
 		this.currentTab = cachedTab;
 
-		const cachedRole = StorageService.loadSnapshot<RolUsuario>(
-			'current_role',
-			RolUsuario.ADMINISTRADOR
-		);
-		this.currentRole = cachedRole;
-
 		const cachedDark = StorageService.loadSnapshot<boolean>('dark_mode', true);
 		this.isDarkMode = cachedDark;
 		this.applyTheme(cachedDark);
@@ -59,10 +55,8 @@ class WorkspaceStore {
 		}
 	}
 
-	setRole(role: RolUsuario) {
+	setRole(role: RolUsuario | null) {
 		this.currentRole = role;
-		StorageService.saveSnapshot('current_role', role);
-		this.showToast(`Perfil cambiado a: ${role.toUpperCase()}`, 'badge');
 	}
 
 	toggleTheme() {

@@ -25,8 +25,8 @@
 					{kpis.totalCausado.toLocaleString('en-US', { minimumFractionDigits: 2 })}
 				</div>
 				<div class="mt-1 flex items-center gap-1 font-mono text-[10px] font-semibold text-teal-300">
-					<span class="material-symbols-outlined text-[13px]">trending_up</span>
-					<span>+{kpis.porcentajeCausadoVsPrev}% vs prev.</span>
+					<span class="material-symbols-outlined text-[13px]">receipt</span>
+					<span>{financialStore.asignaciones.length} causaciones registradas</span>
 				</div>
 			</div>
 			<div class="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-teal-500/20">

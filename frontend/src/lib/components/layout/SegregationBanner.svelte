@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
+	import { authStore } from '../../stores/authStore.svelte';
 	import { RolUsuario } from '@app/shared';
 </script>
 
@@ -11,14 +12,17 @@
 		<div class="leading-tight">
 			<span class="block text-[12px] font-bold text-white">Segregación de Funciones Activa</span>
 			<span class="text-[11px] text-teal-200/80">
-				{#if workspaceStore.currentRole === RolUsuario.ADMINISTRADOR}
-					Perfil <strong>Administrador</strong>: Supervisión y catálogos. Restringido para operar
-					dinero.
+				{#if !authStore.isAuthenticated || !workspaceStore.currentRole}
+					Sin sesión autenticada. Inicie sesión para operar según su rol RBAC.
+				{:else if workspaceStore.currentRole === RolUsuario.ADMINISTRADOR}
+					Perfil <strong>Administrador</strong>: Supervisión, usuarios, grupos de pago y auditoría.
+					Restringido para operar dinero.
 				{:else if workspaceStore.currentRole === RolUsuario.GENERADOR}
-					Perfil <strong>Generador</strong>: Registro de causaciones y solicitudes de pago.
+					Perfil <strong>Generador</strong>: Gestión de proyectos, personas, asignaciones,
+					causaciones y solicitudes de pago.
 				{:else}
-					Perfil <strong>Receptor / Tesorero</strong>: Desembolso FIFO y amortización contable
-					habilitada.
+					Perfil <strong>Receptor / Tesorero</strong>: Aprobación de solicitudes/vales, desembolso
+					FIFO y amortización contable.
 				{/if}
 			</span>
 		</div>

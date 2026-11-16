@@ -1,9 +1,34 @@
 <script lang="ts">
 	import { financialStore } from '../../stores/financialStore.svelte';
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
+	import { authStore } from '../../stores/authStore.svelte';
 
-	let deudas = $derived(financialStore.deudasFifo);
+	let filtrarPorProyectoActivo = $state(true);
+
+	let deudas = $derived(
+		filtrarPorProyectoActivo && workspaceStore.activeProjectId
+			? financialStore.deudasFifo.filter((d) => d.proyectoId === workspaceStore.activeProjectId)
+			: financialStore.deudasFifo
+	);
+
 	let deudaPendienteTotal = $derived(deudas.reduce((acc, d) => acc + d.saldoPendiente, 0));
+	let beneficiarioPrincipal = $derived(
+		deudas.find((d) => d.saldoPendiente > 0)?.beneficiarioNombre ||
+			deudas[0]?.beneficiarioNombre ||
+			'Sin beneficiarios pendientes'
+	);
+
+	function handleDescargarUltimoRecibo() {
+		const ultimoPago = financialStore.pagosRaw[0];
+		if (ultimoPago) {
+			void financialStore.descargarReciboPagoPdf(ultimoPago.id);
+		} else {
+			workspaceStore.showToast(
+				'No hay pagos registrados en el servidor para emitir recibo PDF',
+				'info'
+			);
+		}
+	}
 </script>
 
 <section class="view-panel space-y-3.5" id="tab-fifo">
@@ -20,11 +45,10 @@
 					<p class="text-[11px] text-neutral-400">Amortización por antigüedad cronológica</p>
 				</div>
 			</div>
-			<span
-				class="rounded-full border border-teal-400/30 bg-teal-400/15 px-2 py-0.5 font-mono text-[10px] font-bold text-teal-300"
-			>
-				Motor Cuántico
-			</span>
+			<label class="flex items-center gap-1.5 font-mono text-[10px] text-teal-300">
+				<input type="checkbox" bind:checked={filtrarPorProyectoActivo} />
+				<span>Solo proyecto activo</span>
+			</label>
 		</div>
 
 		<!-- Beneficiary Header -->
@@ -32,8 +56,8 @@
 			class="flex items-center justify-between rounded-xl border border-white/10 bg-neutral-950/70 p-3 text-[11px]"
 		>
 			<div>
-				<span class="block text-[10px] text-neutral-400">Beneficiario Activo</span>
-				<span class="font-bold text-white">Dra. Elena Rostova</span>
+				<span class="block text-[10px] text-neutral-400">Beneficiario Prioritario</span>
+				<span class="font-bold text-white">{beneficiarioPrincipal}</span>
 			</div>
 			<div class="text-right">
 				<span class="block text-[10px] text-neutral-400">Deuda Consolidada</span>
@@ -74,7 +98,7 @@
 								></span>
 								100% Liquidada
 							{:else}
-								{deuda.porcentajeAmortizado}% Parcial Ámbar
+								{deuda.porcentajeAmortizado}% Parcial
 							{/if}
 						</span>
 					</div>
@@ -104,15 +128,21 @@
 							<span class="font-mono text-[10px] text-rose-300">
 								Remanente: ${deuda.saldoPendiente.toFixed(2)} USD
 							</span>
-							<button
-								class="rounded border border-teal-500/30 bg-teal-500/20 px-2 py-0.5 font-mono text-[10px] text-teal-300 transition-colors hover:bg-teal-500/30"
-								onclick={() => financialStore.openFifoPaymentModal(deuda)}
-							>
-								Amortizar
-							</button>
+							{#if authStore.esReceptor}
+								<button
+									class="rounded border border-teal-500/30 bg-teal-500/20 px-2 py-0.5 font-mono text-[10px] text-teal-300 transition-colors hover:bg-teal-500/30"
+									onclick={() => financialStore.openFifoPaymentModal(deuda)}
+								>
+									Amortizar
+								</button>
+							{/if}
 						</div>
 					{/if}
 				</div>
+			{:else}
+				<p class="text-center font-mono text-[11px] text-neutral-400">
+					No hay deudas registradas para el filtro actual.
+				</p>
 			{/each}
 
 			<!-- Remaining Debt Alert -->
@@ -134,7 +164,8 @@
 		<!-- Disbursement Trigger Buttons -->
 		<div class="flex items-center gap-2 pt-1">
 			<button
-				class="interactive-spring flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-mint-400 py-2.5 text-[12px] font-bold text-neutral-950 shadow-[0_0_16px_rgba(20,184,166,0.35)] transition-all active:scale-95"
+				disabled={!authStore.esReceptor}
+				class="interactive-spring flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-mint-400 py-2.5 text-[12px] font-bold text-neutral-950 shadow-[0_0_16px_rgba(20,184,166,0.35)] transition-all active:scale-95 disabled:opacity-40"
 				onclick={() => {
 					const firstPending = deudas.find((d) => d.saldoPendiente > 0);
 					if (firstPending) {
@@ -148,13 +179,14 @@
 				}}
 			>
 				<span class="material-symbols-outlined text-[17px]">payments</span>
-				<span>Ejecutar Desembolso FIFO</span>
+				<span>
+					Ejecutar Desembolso FIFO {authStore.esReceptor ? '' : '(Solo Rol Receptor)'}
+				</span>
 			</button>
 			<button
 				class="interactive-spring flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white transition-all hover:bg-white/10 active:scale-95"
-				onclick={() =>
-					workspaceStore.showToast('Comprobante fiscal PDF preparado', 'picture_as_pdf')}
-				title="Descargar Comprobante PDF"
+				onclick={handleDescargarUltimoRecibo}
+				title="Descargar Recibo PDF del último pago"
 			>
 				<span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
 			</button>

@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { workspaceStore } from '#lib/stores/workspaceStore.svelte';
 	import { financialStore } from '#lib/stores/financialStore.svelte';
+	import { authStore } from '#lib/stores/authStore.svelte';
 
 	import AmbientAurora from '#lib/components/layout/AmbientAurora.svelte';
 	import TopHeader from '#lib/components/layout/TopHeader.svelte';
@@ -9,14 +11,22 @@
 	import Toast from '#lib/components/layout/Toast.svelte';
 
 	import OverviewView from '#lib/components/views/OverviewView.svelte';
-	import LedgerView from '#lib/components/views/LedgerView.svelte';
+	import CatalogsView from '#lib/components/views/CatalogsView.svelte';
 	import AccrualView from '#lib/components/views/AccrualView.svelte';
+	import RequestsView from '#lib/components/views/RequestsView.svelte';
 	import FifoView from '#lib/components/views/FifoView.svelte';
+	import PettyCashView from '#lib/components/views/PettyCashView.svelte';
+	import LedgerView from '#lib/components/views/LedgerView.svelte';
 	import AuditView from '#lib/components/views/AuditView.svelte';
 
 	import ModuleCatalogDrawer from '#lib/components/modals/ModuleCatalogDrawer.svelte';
 	import VoidLedgerModal from '#lib/components/modals/VoidLedgerModal.svelte';
 	import FifoPaymentModal from '#lib/components/modals/FifoPaymentModal.svelte';
+	import LoginModal from '#lib/components/modals/LoginModal.svelte';
+
+	onMount(async () => {
+		await authStore.initSession();
+	});
 </script>
 
 <svelte:head>
@@ -33,6 +43,7 @@
 <ModuleCatalogDrawer />
 <VoidLedgerModal />
 <FifoPaymentModal />
+<LoginModal />
 
 <!-- 4. Main App Container (relative z-10) -->
 <div class="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col pb-28" id="appRoot">
@@ -59,12 +70,18 @@
 	<main class="mt-2 space-y-3.5 px-2.5" id="viewContainer">
 		{#if workspaceStore.currentTab === 'overview'}
 			<OverviewView />
-		{:else if workspaceStore.currentTab === 'ledger'}
-			<LedgerView />
+		{:else if workspaceStore.currentTab === 'catalogs'}
+			<CatalogsView />
 		{:else if workspaceStore.currentTab === 'accrual'}
 			<AccrualView />
+		{:else if workspaceStore.currentTab === 'requests'}
+			<RequestsView />
 		{:else if workspaceStore.currentTab === 'fifo'}
 			<FifoView />
+		{:else if workspaceStore.currentTab === 'petty-cash'}
+			<PettyCashView />
+		{:else if workspaceStore.currentTab === 'ledger'}
+			<LedgerView />
 		{:else if workspaceStore.currentTab === 'audit'}
 			<AuditView />
 		{/if}

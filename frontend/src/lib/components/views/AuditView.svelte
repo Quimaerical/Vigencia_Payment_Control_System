@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { financialStore } from '../../stores/financialStore.svelte';
+	import { authStore } from '../../stores/authStore.svelte';
 
 	let diffs = $derived(financialStore.auditDiffs);
 </script>
@@ -16,18 +17,36 @@
 				<div>
 					<h2 class="text-[15px] font-bold text-white">Inspector Forense JSONB</h2>
 					<p class="text-[11px] text-neutral-400">
-						PostgreSQL Trigger <code class="font-mono text-[10px] text-teal-300"
-							>trg_audit_payments()</code
+						PostgreSQL Trigger & <code class="font-mono text-[10px] text-teal-300"
+							>/api/v1/audit-logs</code
 						>
 					</p>
 				</div>
 			</div>
-			<span
-				class="rounded-full border border-teal-400/30 bg-teal-400/15 px-2 py-0.5 font-mono text-[10px] font-bold text-teal-300"
-			>
-				SHA-256
-			</span>
+			<div class="flex items-center gap-1.5">
+				<button
+					type="button"
+					class="rounded-lg border border-white/20 bg-white/5 px-2 py-0.5 font-mono text-[10px] text-white hover:bg-white/10"
+					onclick={() => financialStore.syncFromBackend()}
+				>
+					↻ Recargar
+				</button>
+				<span
+					class="rounded-full border border-teal-400/30 bg-teal-400/15 px-2 py-0.5 font-mono text-[10px] font-bold text-teal-300"
+				>
+					Audit DB
+				</span>
+			</div>
 		</div>
+
+		{#if !authStore.esAdmin}
+			<div
+				class="rounded-xl border border-amber-400/30 bg-amber-950/30 p-2.5 text-[11px] text-amber-200"
+			>
+				Nota RBAC: La consulta en vivo de <code>/api/v1/audit-logs</code> requiere rol
+				<strong>ADMINISTRADOR</strong>.
+			</div>
+		{/if}
 
 		{#each diffs as diff (diff.id)}
 			<div class="space-y-2 border-t border-white/5 pt-2 first:border-0 first:pt-0">
@@ -35,7 +54,8 @@
 					class="flex flex-wrap items-center justify-between gap-1 font-mono text-[10px] text-neutral-400"
 				>
 					<span>
-						usuario_id: <strong class="text-white">{diff.usuarioId} [{diff.usuarioRol}]</strong>
+						usuario: <strong class="text-white">{diff.usuarioId} [{diff.usuarioRol}]</strong> ·
+						acción: <strong class="text-teal-300">{diff.accion}</strong> ({diff.tablaAfectada} #{diff.registroId})
 					</span>
 					<span>{diff.timestamp}</span>
 				</div>
@@ -84,9 +104,9 @@
 				>
 					<span class="flex items-center gap-1 font-semibold text-teal-300">
 						<span class="material-symbols-outlined text-[14px]">verified_user</span>
-						Integridad Criptográfica Verificada
+						Registro Inmutable #{diff.id}
 					</span>
-					<span class="text-neutral-400">Nivel: ISO 27001</span>
+					<span class="text-neutral-400">IP: {diff.ipOrigen || 'N/A'}</span>
 				</div>
 			</div>
 		{/each}
