@@ -433,10 +433,11 @@ export class ApiClient {
 	public static async generarLoteCausacion(dto: GenerarCausacionLoteDTO) {
 		return this.request<{
 			mensaje: string;
-			totalCausadoLote: number;
 			cantidadCausaciones: number;
-			solicitudId: number | null;
-			data: DeudaBackendDTO[];
+			montoTotalLote: number;
+			diasPeriodo?: number;
+			solicitudPago?: SolicitudPagoDTO | null;
+			causaciones?: DeudaBackendDTO[];
 		}>('/causaciones/lote', {
 			method: 'POST',
 			body: JSON.stringify(dto)
@@ -526,9 +527,12 @@ export class ApiClient {
 	public static async anularPago(pagoId: number, motivoAnulacion: string) {
 		return this.request<{
 			mensaje: string;
-			pagoId: number;
-			montoRevertido: number;
-			deudasRestauradas: number;
+			data?: PagoBackendDTO;
+			deudasRestituidas?: Array<{
+				deudaId: number;
+				montoRevertido: number;
+				nuevoSaldo: number;
+			}>;
 		}>(`/pagos/${pagoId}/anular`, {
 			method: 'POST',
 			body: JSON.stringify({ motivoAnulacion })

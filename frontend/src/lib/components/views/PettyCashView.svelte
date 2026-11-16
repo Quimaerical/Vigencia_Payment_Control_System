@@ -289,7 +289,13 @@
 								Proyecto: {caja.proyecto?.codigo ?? `#${caja.proyectoId}`} | Inicial (Arrastre): ${Number(
 									caja.saldoInicial
 								).toFixed(2)} | Asignado: ${Number(caja.montoAsignado).toFixed(2)} | Gastado: ${Number(
-									caja.totalGastado
+									caja.totalGastado ??
+										Math.max(
+											0,
+											Number(caja.saldoInicial) +
+												Number(caja.montoAsignado) -
+												Number(caja.saldoActual)
+										)
 								).toFixed(2)}
 							</p>
 						</div>
@@ -320,7 +326,9 @@
 							<div class="space-y-1.5 rounded-lg border border-white/10 bg-neutral-900/80 p-2">
 								<div class="flex flex-wrap items-center justify-between gap-1">
 									<div>
-										<span class="font-mono font-bold text-amber-300">{vale.numeroVale}</span>
+										<span class="font-mono font-bold text-amber-300"
+											>{vale.numeroVale ?? `#VALE-${vale.id}`}</span
+										>
 										<span class="ml-1 font-semibold">{vale.concepto}</span>
 										<p class="font-mono text-[10px] text-neutral-400">
 											Solicitante: {vale.solicitantePersona

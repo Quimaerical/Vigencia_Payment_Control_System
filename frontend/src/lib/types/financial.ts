@@ -387,7 +387,7 @@ export interface PagoBackendDTO {
 export interface ValeCajaDTO {
 	id: number;
 	cajaChicaId: number;
-	numeroVale: string;
+	numeroVale?: string;
 	solicitantePersonaId: number;
 	tramitadoPorId: number;
 	aprobadoPorId: number | null;
@@ -418,7 +418,7 @@ export interface CajaChicaDTO {
 	mes: number;
 	saldoInicial: number | string;
 	montoAsignado: number | string;
-	totalGastado: number | string;
+	totalGastado?: number | string;
 	saldoActual: number | string;
 	estado: EstadoCajaChica;
 	fechaApertura: string;

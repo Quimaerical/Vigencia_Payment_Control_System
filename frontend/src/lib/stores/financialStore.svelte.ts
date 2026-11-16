@@ -312,8 +312,9 @@ class FinancialStore {
 			workspaceStore.showToast(res.error || 'No se pudo generar el lote de causación', 'warning');
 			return false;
 		}
+		const montoLote = Number(res.data.montoTotalLote ?? 0);
 		workspaceStore.showToast(
-			`${res.data.mensaje} (${res.data.cantidadCausaciones} causaciones · $${res.data.totalCausadoLote.toFixed(2)} USD)`,
+			`${res.data.mensaje} (${res.data.cantidadCausaciones ?? 0} causaciones · $${montoLote.toFixed(2)} USD)`,
 			'post_add'
 		);
 		await this.syncFromBackend();
@@ -423,8 +424,12 @@ class FinancialStore {
 			return false;
 		}
 
+		const totalRevertido =
+			res.data.deudasRestituidas && res.data.deudasRestituidas.length > 0
+				? res.data.deudasRestituidas.reduce((acc, d) => acc + Number(d.montoRevertido ?? 0), 0)
+				: Number(res.data.data?.montoTotal ?? 0);
 		workspaceStore.showToast(
-			`${res.data.mensaje} ($${res.data.montoRevertido.toFixed(2)} USD revertidos)`,
+			`${res.data.mensaje} ($${totalRevertido.toFixed(2)} USD revertidos)`,
 			'done_all'
 		);
 		await this.syncFromBackend();
