@@ -22,13 +22,19 @@ class PettyCashStore {
 
 	async syncAll(proyectoId?: number): Promise<void> {
 		if (!ApiClient.getToken()) return;
+		if (!authStore.esGenerador && !authStore.esReceptor) {
+			this.cajasChicas = [];
+			return;
+		}
 		this.isLoading = true;
-		const res = await ApiClient.listarCajasChicas(proyectoId ? { proyectoId } : undefined);
-		this.isLoading = false;
-
-		if (res.data?.data) {
-			this.cajasChicas = res.data.data;
-			StorageService.saveSnapshot('fin_cajas_chicas', this.cajasChicas);
+		try {
+			const res = await ApiClient.listarCajasChicas(proyectoId ? { proyectoId } : undefined);
+			if (res.data?.data) {
+				this.cajasChicas = res.data.data;
+				StorageService.saveSnapshot('fin_cajas_chicas', this.cajasChicas);
+			}
+		} finally {
+			this.isLoading = false;
 		}
 	}
 

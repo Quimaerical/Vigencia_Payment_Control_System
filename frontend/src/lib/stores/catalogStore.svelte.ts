@@ -47,39 +47,47 @@ class CatalogStore {
 		if (!ApiClient.getToken()) return;
 		this.isLoading = true;
 
-		const [perRes, proyRes, grpRes, asigRes] = await Promise.all([
-			ApiClient.listarPersonas(),
-			ApiClient.listarProyectos(),
-			ApiClient.listarGruposPago(),
-			ApiClient.listarAsignaciones()
-		]);
+		try {
+			const puedeLeerDetalle = authStore.esGenerador || authStore.esReceptor;
 
-		if (perRes.data?.data) {
-			this.personas = perRes.data.data;
-			StorageService.saveSnapshot('cat_personas', this.personas);
-		}
-		if (proyRes.data?.data) {
-			this.proyectos = proyRes.data.data;
-			StorageService.saveSnapshot('cat_proyectos', this.proyectos);
-		}
-		if (grpRes.data?.data) {
-			this.gruposPago = grpRes.data.data;
-			StorageService.saveSnapshot('cat_grupos_pago', this.gruposPago);
-		}
-		if (asigRes.data?.data) {
-			this.asignaciones = asigRes.data.data;
-			StorageService.saveSnapshot('cat_asignaciones', this.asignaciones);
-		}
+			const [perRes, proyRes, grpRes, asigRes] = await Promise.all([
+				ApiClient.listarPersonas(),
+				ApiClient.listarProyectos(),
+				ApiClient.listarGruposPago(),
+				puedeLeerDetalle ? ApiClient.listarAsignaciones() : Promise.resolve(null)
+			]);
 
-		if (authStore.esAdmin) {
-			const usrRes = await ApiClient.listarUsuarios();
-			if (usrRes.data?.data) {
-				this.usuarios = usrRes.data.data;
-				StorageService.saveSnapshot('cat_usuarios', this.usuarios);
+			if (perRes.data?.data) {
+				this.personas = perRes.data.data;
+				StorageService.saveSnapshot('cat_personas', this.personas);
 			}
-		}
+			if (proyRes.data?.data) {
+				this.proyectos = proyRes.data.data;
+				StorageService.saveSnapshot('cat_proyectos', this.proyectos);
+			}
+			if (grpRes.data?.data) {
+				this.gruposPago = grpRes.data.data;
+				StorageService.saveSnapshot('cat_grupos_pago', this.gruposPago);
+			}
+			if (asigRes?.data?.data) {
+				this.asignaciones = asigRes.data.data;
+				StorageService.saveSnapshot('cat_asignaciones', this.asignaciones);
+			} else if (!puedeLeerDetalle) {
+				this.asignaciones = [];
+			}
 
-		this.isLoading = false;
+			if (authStore.esAdmin) {
+				const usrRes = await ApiClient.listarUsuarios();
+				if (usrRes.data?.data) {
+					this.usuarios = usrRes.data.data;
+					StorageService.saveSnapshot('cat_usuarios', this.usuarios);
+				}
+			} else {
+				this.usuarios = [];
+			}
+		} finally {
+			this.isLoading = false;
+		}
 	}
 
 	// Usuarios (Rol Administrador)

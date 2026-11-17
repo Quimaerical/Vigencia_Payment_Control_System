@@ -40,6 +40,14 @@ export interface ApiResult<T> {
 	codigo?: string;
 }
 
+export interface PaginatedResponse<T> {
+	data: T[];
+	total?: number;
+	pagina?: number;
+	limite?: number;
+	totalPaginas?: number;
+}
+
 type UnauthorizedHandler = () => void;
 
 /**
@@ -97,11 +105,16 @@ export class ApiClient {
 			return { error: `Error HTTP ${status}` };
 		}
 		const codigo = typeof errorJson.codigo === 'string' ? errorJson.codigo : undefined;
+		const sufijoReintento =
+			status === 429 && typeof errorJson.reintentarEn === 'number'
+				? ` (reintente en ${errorJson.reintentarEn}s)`
+				: '';
+
 		if (typeof errorJson.mensaje === 'string' && errorJson.mensaje) {
-			return { error: errorJson.mensaje, codigo };
+			return { error: `${errorJson.mensaje}${sufijoReintento}`, codigo };
 		}
 		if (typeof errorJson.message === 'string' && errorJson.message) {
-			return { error: errorJson.message, codigo };
+			return { error: `${errorJson.message}${sufijoReintento}`, codigo };
 		}
 		if (Array.isArray(errorJson.errors) && errorJson.errors.length > 0) {
 			const msgs = errorJson.errors
@@ -283,8 +296,12 @@ export class ApiClient {
 	// 2.1 Gestión de Catálogos y Usuarios
 	// =========================================================================
 
-	public static async listarUsuarios() {
-		return this.request<{ data: UsuarioDTO[] }>('/usuarios');
+	public static async listarUsuarios(filtros?: { pagina?: number; limite?: number }) {
+		return this.request<PaginatedResponse<UsuarioDTO>>(
+			'/usuarios',
+			{},
+			{ pagina: filtros?.pagina, limite: filtros?.limite ?? 100 }
+		);
 	}
 
 	public static async crearUsuario(dto: CrearUsuarioAdminDTO) {
@@ -301,8 +318,8 @@ export class ApiClient {
 		});
 	}
 
-	public static async listarPersonas(soloActivas?: boolean) {
-		return this.request<{ data: PersonaDTO[] }>('/personas', {}, { soloActivas });
+	public static async listarPersonas(soloActivas?: boolean, limite = 100) {
+		return this.request<PaginatedResponse<PersonaDTO>>('/personas', {}, { soloActivas, limite });
 	}
 
 	public static async crearPersona(dto: CrearPersonaDTO) {
@@ -330,8 +347,14 @@ export class ApiClient {
 		area?: string;
 		ambito?: string;
 		soloActivos?: boolean;
+		pagina?: number;
+		limite?: number;
 	}) {
-		return this.request<{ data: ProyectoDTO[] }>('/proyectos', {}, filtros);
+		return this.request<PaginatedResponse<ProyectoDTO>>(
+			'/proyectos',
+			{},
+			{ ...filtros, limite: filtros?.limite ?? 100 }
+		);
 	}
 
 	public static async crearProyecto(dto: CrearProyectoDTO) {
@@ -355,8 +378,12 @@ export class ApiClient {
 		});
 	}
 
-	public static async listarGruposPago(soloActivos?: boolean) {
-		return this.request<{ data: GrupoPagoDTO[] }>('/grupos-pago', {}, { soloActivos });
+	public static async listarGruposPago(soloActivos?: boolean, limite = 100) {
+		return this.request<PaginatedResponse<GrupoPagoDTO>>(
+			'/grupos-pago',
+			{},
+			{ soloActivos, limite }
+		);
 	}
 
 	public static async crearGrupoPago(dto: CrearGrupoPagoDTO) {
@@ -385,8 +412,14 @@ export class ApiClient {
 		personaId?: number;
 		grupoPagoId?: number;
 		soloActivas?: boolean;
+		pagina?: number;
+		limite?: number;
 	}) {
-		return this.request<{ data: AsignacionDTO[] }>('/asignaciones', {}, filtros);
+		return this.request<PaginatedResponse<AsignacionDTO>>(
+			'/asignaciones',
+			{},
+			{ ...filtros, limite: filtros?.limite ?? 100 }
+		);
 	}
 
 	public static async crearAsignacion(dto: CrearAsignacionDTO) {
@@ -419,8 +452,14 @@ export class ApiClient {
 		personaId?: number;
 		solicitudId?: number;
 		estado?: string;
+		pagina?: number;
+		limite?: number;
 	}) {
-		return this.request<{ data: DeudaBackendDTO[] }>('/causaciones', {}, filtros);
+		return this.request<PaginatedResponse<DeudaBackendDTO>>(
+			'/causaciones',
+			{},
+			{ ...filtros, limite: filtros?.limite ?? 100 }
+		);
 	}
 
 	public static async simularCausacion(dto: SimularProrrateoPayloadDTO) {
@@ -458,8 +497,17 @@ export class ApiClient {
 	// 2.3 Ciclo de Solicitudes y Pagos
 	// =========================================================================
 
-	public static async listarSolicitudesPago(filtros?: { proyectoId?: number; estado?: string }) {
-		return this.request<{ data: SolicitudPagoDTO[] }>('/solicitudes-pago', {}, filtros);
+	public static async listarSolicitudesPago(filtros?: {
+		proyectoId?: number;
+		estado?: string;
+		pagina?: number;
+		limite?: number;
+	}) {
+		return this.request<PaginatedResponse<SolicitudPagoDTO>>(
+			'/solicitudes-pago',
+			{},
+			{ ...filtros, limite: filtros?.limite ?? 100 }
+		);
 	}
 
 	public static async obtenerSolicitudPago(id: number) {
@@ -508,8 +556,14 @@ export class ApiClient {
 		personaId?: number;
 		solicitudId?: number;
 		estado?: string;
+		pagina?: number;
+		limite?: number;
 	}) {
-		return this.request<{ data: PagoBackendDTO[] }>('/pagos', {}, filtros);
+		return this.request<PaginatedResponse<PagoBackendDTO>>(
+			'/pagos',
+			{},
+			{ ...filtros, limite: filtros?.limite ?? 100 }
+		);
 	}
 
 	public static async procesarPago(dto: ProcesarPagoDTO) {
@@ -543,8 +597,17 @@ export class ApiClient {
 	// 2.4 Control de Cajas Chicas y Vales
 	// =========================================================================
 
-	public static async listarCajasChicas(filtros?: { proyectoId?: number; estado?: string }) {
-		return this.request<{ data: CajaChicaDTO[] }>('/cajas-chicas', {}, filtros);
+	public static async listarCajasChicas(filtros?: {
+		proyectoId?: number;
+		estado?: string;
+		pagina?: number;
+		limite?: number;
+	}) {
+		return this.request<PaginatedResponse<CajaChicaDTO>>(
+			'/cajas-chicas',
+			{},
+			{ ...filtros, limite: filtros?.limite ?? 100 }
+		);
 	}
 
 	public static async obtenerCajaChica(id: number) {

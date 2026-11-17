@@ -113,25 +113,40 @@ class FinancialStore {
 		this.isSyncing = true;
 
 		try {
+			const puedeLeerDetalle = authStore.esGenerador || authStore.esReceptor;
+
 			const [resumenRes, causacionesRes, solicitudesRes, pagosRes] = await Promise.all([
 				ApiClient.obtenerResumenReporte(),
-				ApiClient.listarCausaciones(),
-				ApiClient.listarSolicitudesPago(),
-				ApiClient.listarPagos()
+				puedeLeerDetalle ? ApiClient.listarCausaciones() : Promise.resolve(null),
+				puedeLeerDetalle ? ApiClient.listarSolicitudesPago() : Promise.resolve(null),
+				puedeLeerDetalle ? ApiClient.listarPagos() : Promise.resolve(null)
 			]);
 
 			if (
 				resumenRes.isOffline ||
-				causacionesRes.isOffline ||
-				solicitudesRes.isOffline ||
-				pagosRes.isOffline
+				causacionesRes?.isOffline ||
+				solicitudesRes?.isOffline ||
+				pagosRes?.isOffline
 			) {
 				this.isOffline = true;
 				return;
 			}
 
 			this.isOffline = false;
-			await Promise.all([catalogStore.syncAll(), pettyCashStore.syncAll()]);
+			await Promise.all([
+				catalogStore.syncAll(),
+				puedeLeerDetalle ? pettyCashStore.syncAll() : Promise.resolve()
+			]);
+
+			if (!puedeLeerDetalle) {
+				this.deudasRaw = [];
+				this.solicitudesPago = [];
+				this.pagosRaw = [];
+				this.asignaciones = [];
+				this.deudasFifo = [];
+				this.asientos = [];
+				pettyCashStore.cajasChicas = [];
+			}
 
 			if (resumenRes.data) {
 				this.resumenReporte = resumenRes.data;
@@ -169,7 +184,7 @@ class FinancialStore {
 				}
 			}
 
-			if (causacionesRes.data?.data) {
+			if (causacionesRes?.data?.data) {
 				this.deudasRaw = causacionesRes.data.data;
 
 				const activas = this.deudasRaw.filter((d) => d.estado !== EstadoDeuda.ANULADA);
@@ -239,11 +254,11 @@ class FinancialStore {
 				});
 			}
 
-			if (solicitudesRes.data?.data) {
+			if (solicitudesRes?.data?.data) {
 				this.solicitudesPago = solicitudesRes.data.data;
 			}
 
-			if (pagosRes.data?.data) {
+			if (pagosRes?.data?.data) {
 				this.pagosRaw = pagosRes.data.data;
 				this.asientos = this.pagosRaw.map((p) => {
 					const personaNombre = p.persona
