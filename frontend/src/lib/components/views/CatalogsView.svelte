@@ -623,7 +623,7 @@
 					/>
 					<input
 						type="password"
-						placeholder="Contraseña (mín. 6)"
+						placeholder="Contraseña (mín. 12 caracteres)"
 						class="rounded border border-white/15 bg-neutral-900 px-2 py-1 font-mono"
 						bind:value={usrPassword}
 						required

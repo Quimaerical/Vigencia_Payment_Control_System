@@ -19,12 +19,12 @@
 			</div>
 			<div>
 				<p class="text-[12px] leading-none font-bold text-white">
-					{activeProject ? activeProject.nombre : 'Lab de Física Cuántica FACYT'}
+					{activeProject ? activeProject.nombre : 'Sin proyecto activo'}
 				</p>
 				<p class="mt-0.5 font-mono text-[10px] text-neutral-400">
 					{activeProject
-						? activeProject.descripcion
-						: 'Subvención Fonacit #8820 · Período Quincena 10'}
+						? activeProject.descripcion || `Código: ${activeProject.codigo}`
+						: 'Autentique una sesión para cargar el proyecto seleccionado'}
 				</p>
 			</div>
 		</div>

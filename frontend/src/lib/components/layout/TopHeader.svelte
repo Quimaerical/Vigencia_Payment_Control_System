@@ -36,7 +36,7 @@
 					<span
 						class="h-1.5 w-1.5 animate-ping rounded-full bg-emerald-accent shadow-[0_0_8px_#10B981]"
 					></span>
-					<span>Nodo Fiscal {activeProject ? activeProject.codigo : 'FQ-2025'}</span>
+					<span>Nodo Fiscal {activeProject ? activeProject.codigo : 'Sin proyecto'}</span>
 				</div>
 			</div>
 		</div>

@@ -83,7 +83,11 @@
 			</div>
 			<button
 				type="button"
-				class="rounded-full border border-teal-400/30 bg-teal-400/15 px-2.5 py-0.5 font-mono text-[10px] font-bold text-teal-300 hover:bg-teal-400/25"
+				disabled={!authStore.esGenerador}
+				title={authStore.esGenerador
+					? 'Simular prorrateo contra la API'
+					: 'Solo el rol Generador puede simular causaciones en API'}
+				class="rounded-full border border-teal-400/30 bg-teal-400/15 px-2.5 py-0.5 font-mono text-[10px] font-bold text-teal-300 hover:bg-teal-400/25 disabled:cursor-not-allowed disabled:opacity-40"
 				onclick={handleSimularBackend}
 			>
 				Verificar en API {factorBackend !== null ? `(${factorBackend})` : ''}
