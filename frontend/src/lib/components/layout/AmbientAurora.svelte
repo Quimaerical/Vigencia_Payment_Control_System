@@ -60,7 +60,7 @@
 		></div>
 	</div>
 	<div
-		class="pointer-events-none absolute top-[18%] left-1/2 -translate-x-1/2 font-mono text-[70px] font-black whitespace-nowrap text-teal-400/[0.08] select-none"
+		class="pointer-events-none absolute top-[18%] left-1/2 -translate-x-1/2 font-mono text-4xl font-black whitespace-nowrap text-teal-400/[0.05] blur-[3.5px] select-none sm:text-6xl sm:blur-[4px] lg:text-[84px]"
 	>
 		Ψ(r,t) = Ae^(i(k·r - ωt))
 	</div>
