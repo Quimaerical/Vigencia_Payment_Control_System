@@ -12,7 +12,7 @@
 <header
 	class="chroma-glass-card sticky top-0 z-30 mx-2 mt-1 rounded-b-2xl border-t-0 px-3.5 py-2.5 shadow-2xl backdrop-blur-2xl"
 >
-	<div class="flex items-center justify-between">
+	<div class="flex flex-wrap items-center justify-between gap-2">
 		<!-- Brand & Scientific Node Mark -->
 		<div class="flex items-center gap-2.5">
 			<div
@@ -66,7 +66,7 @@
 				title="Personalizar Módulos"
 			>
 				<span class="material-symbols-outlined text-[17px]">dashboard_customize</span>
-				<span class="text-[11px] font-semibold">
+				<span class="hidden text-[11px] font-semibold sm:inline">
 					{workspaceStore.isCustomizing ? 'Salir' : 'Personalizar'}
 				</span>
 			</button>

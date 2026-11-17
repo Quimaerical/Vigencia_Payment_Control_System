@@ -4,7 +4,7 @@
 </script>
 
 <ModularCardWrapper id="mod-quick-actions" title="Atajos Frecuentes">
-	<div class="grid grid-cols-2 gap-2">
+	<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
 		<button
 			class="interactive-spring group flex items-center gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-2.5 text-left transition-all hover:border-teal-400/50"
 			onclick={() => workspaceStore.switchTab('accrual')}

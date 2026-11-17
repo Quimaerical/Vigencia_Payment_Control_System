@@ -98,7 +98,7 @@
 		</div>
 
 		<!-- Inputs -->
-		<div class="grid grid-cols-3 gap-2 text-[11px]">
+		<div class="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-3">
 			<div>
 				<label for="calc-dias-activos" class="mb-1 block font-mono text-[10px] text-neutral-400"
 					>Días Activos</label
@@ -162,7 +162,7 @@
 
 		<!-- Parámetros del lote de causación (/api/v1/causaciones/lote) -->
 		<div
-			class="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-2.5 text-[11px] text-white"
+			class="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-2.5 text-[11px] text-white sm:grid-cols-2 lg:grid-cols-4"
 		>
 			<div>
 				<label for="lote-proy" class="block text-[10px] text-neutral-400">Proyecto para Lote</label>
@@ -213,7 +213,7 @@
 					bind:value={loteFin}
 				/>
 			</div>
-			<div class="col-span-2 flex flex-wrap items-center justify-between gap-2 pt-1">
+			<div class="col-span-full flex flex-wrap items-center justify-between gap-2 pt-1">
 				<label class="flex items-center gap-1.5 text-[10px] text-neutral-300">
 					<input type="checkbox" bind:checked={loteCrearSolicitud} />
 					<span>Crear Solicitud de Pago automáticamente</span>

@@ -46,7 +46,10 @@
 <LoginModal />
 
 <!-- 4. Main App Container (relative z-10) -->
-<div class="relative z-10 mx-auto flex min-h-screen max-w-2xl flex-col pb-28" id="appRoot">
+<div
+	class="relative z-10 mx-auto flex min-h-screen w-full max-w-[1440px] flex-col pb-28 md:w-[90%] lg:w-[82%] xl:w-3/4"
+	id="appRoot"
+>
 	<!-- Top Sticky App Bar (z-30) -->
 	<TopHeader />
 

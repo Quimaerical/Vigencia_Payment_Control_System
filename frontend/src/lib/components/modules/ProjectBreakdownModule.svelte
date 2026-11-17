@@ -17,7 +17,7 @@
 		</span>
 	</div>
 
-	<div class="space-y-2 text-[11px]">
+	<div class="grid grid-cols-1 gap-3 text-[11px] lg:grid-cols-2">
 		{#each proyectos as proy (proy.id)}
 			<div>
 				<div class="mb-1 flex justify-between">

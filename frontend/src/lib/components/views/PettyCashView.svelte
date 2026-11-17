@@ -118,10 +118,10 @@
 
 		<!-- Apertura Mensual de Caja Chica (Rol Generador) -->
 		<form
-			class="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3"
+			class="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3 sm:grid-cols-2 lg:grid-cols-3"
 			onsubmit={handleAbrirCaja}
 		>
-			<div class="col-span-2 font-bold text-teal-300">
+			<div class="col-span-full font-bold text-teal-300">
 				Apertura Mensual de Caja Chica con Arrastre de Saldo (Rol: Generador)
 			</div>
 			<input
@@ -165,7 +165,7 @@
 					{/each}
 				</select>
 			</div>
-			<div class="grid grid-cols-2 gap-1">
+			<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 				<div>
 					<label for="cc-anio" class="block text-[10px] text-neutral-400">Año</label>
 					<input
@@ -204,7 +204,7 @@
 			<button
 				type="submit"
 				disabled={!authStore.esGenerador}
-				class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
+				class="col-span-full rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 			>
 				+ Abrir Caja Chica Mensual {authStore.esGenerador ? '' : '(Requiere rol Generador)'}
 			</button>
@@ -212,10 +212,10 @@
 
 		<!-- Solicitud de Vale -->
 		<form
-			class="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3"
+			class="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3 sm:grid-cols-2"
 			onsubmit={handleSolicitarVale}
 		>
-			<div class="col-span-2 font-bold text-amber-300">Solicitar Nuevo Vale de Caja Chica</div>
+			<div class="col-span-full font-bold text-amber-300">Solicitar Nuevo Vale de Caja Chica</div>
 			<div>
 				<label for="v-caja" class="block text-[10px] text-neutral-400">Caja Chica Abierta</label>
 				<select
@@ -268,7 +268,7 @@
 			<button
 				type="submit"
 				disabled={!authStore.esGenerador}
-				class="col-span-2 rounded-lg bg-amber-400 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
+				class="col-span-full rounded-lg bg-amber-400 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 			>
 				+ Solicitar Vale de Caja {authStore.esGenerador ? '' : '(Requiere rol Generador)'}
 			</button>

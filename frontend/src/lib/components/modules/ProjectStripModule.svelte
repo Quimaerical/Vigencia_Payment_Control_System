@@ -10,7 +10,7 @@
 </script>
 
 <ModularCardWrapper id="mod-project-strip" title="Ficha de Proyecto" isShimmer={true}>
-	<div class="flex items-center justify-between">
+	<div class="flex flex-wrap items-center justify-between gap-2">
 		<div class="flex items-center gap-2">
 			<div
 				class="flex h-8 w-8 items-center justify-center rounded-lg border border-teal-400/25 bg-teal-400/15 text-teal-300"

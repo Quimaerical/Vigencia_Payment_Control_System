@@ -210,10 +210,10 @@
 		<!-- SUB-TAB: PROYECTOS -->
 		{#if activeSubTab === 'proyectos'}
 			<form
-				class="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3"
+				class="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3 sm:grid-cols-2 lg:grid-cols-3"
 				onsubmit={handleCrearProyecto}
 			>
-				<div class="col-span-2 font-bold text-teal-300">
+				<div class="col-span-full font-bold text-teal-300">
 					Nuevo Proyecto (Exclusivo Rol Generador)
 				</div>
 				<input
@@ -270,13 +270,13 @@
 				<input
 					type="text"
 					placeholder="Descripción (opcional)"
-					class="col-span-2 rounded border border-white/15 bg-neutral-900 px-2 py-1"
+					class="col-span-full rounded border border-white/15 bg-neutral-900 px-2 py-1"
 					bind:value={proyDescripcion}
 				/>
 				<button
 					type="submit"
 					disabled={!authStore.esGenerador}
-					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
+					class="col-span-full rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 				>
 					+ Registrar Proyecto {authStore.esGenerador ? '' : '(Requiere rol Generador)'}
 				</button>
@@ -315,10 +315,10 @@
 		<!-- SUB-TAB: PERSONAS (BENEFICIARIOS SIN USUARIO) -->
 		{#if activeSubTab === 'personas'}
 			<form
-				class="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3"
+				class="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3 sm:grid-cols-2"
 				onsubmit={handleCrearPersona}
 			>
-				<div class="col-span-2 font-bold text-teal-300">
+				<div class="col-span-full font-bold text-teal-300">
 					Nuevo Beneficiario (Personal que cobra — sin usuario en el sistema)
 				</div>
 				<input
@@ -351,7 +351,7 @@
 				<button
 					type="submit"
 					disabled={!authStore.esGenerador}
-					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
+					class="col-span-full rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 				>
 					+ Registrar Persona Beneficiaria {authStore.esGenerador ? '' : '(Requiere rol Generador)'}
 				</button>
@@ -386,10 +386,10 @@
 		<!-- SUB-TAB: GRUPOS DE PAGO -->
 		{#if activeSubTab === 'grupos'}
 			<form
-				class="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3"
+				class="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3 sm:grid-cols-2"
 				onsubmit={handleCrearGrupo}
 			>
-				<div class="col-span-2 font-bold text-teal-300">
+				<div class="col-span-full font-bold text-teal-300">
 					Nuevo Grupo de Pago (Periodicidad y Cortes)
 				</div>
 				<input
@@ -434,13 +434,13 @@
 				<input
 					type="text"
 					placeholder="Descripción"
-					class="col-span-2 rounded border border-white/15 bg-neutral-900 px-2 py-1"
+					class="col-span-full rounded border border-white/15 bg-neutral-900 px-2 py-1"
 					bind:value={grpDescripcion}
 				/>
 				<button
 					type="submit"
 					disabled={!authStore.esAdmin}
-					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
+					class="col-span-full rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 				>
 					+ Crear Grupo de Pago {authStore.esAdmin ? '' : '(Requiere rol Administrador)'}
 				</button>
@@ -478,10 +478,10 @@
 		<!-- SUB-TAB: ASIGNACIONES -->
 		{#if activeSubTab === 'asignaciones'}
 			<form
-				class="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3"
+				class="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3 sm:grid-cols-2 lg:grid-cols-3"
 				onsubmit={handleCrearAsignacion}
 			>
-				<div class="col-span-2 font-bold text-teal-300">
+				<div class="col-span-full font-bold text-teal-300">
 					Nueva Asignación (Persona + Proyecto + Grupo de Pago + Monto USD)
 				</div>
 				<div>
@@ -558,7 +558,7 @@
 				<button
 					type="submit"
 					disabled={!authStore.esGenerador}
-					class="col-span-2 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
+					class="col-span-full rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950 disabled:opacity-40"
 				>
 					+ Crear Asignación {authStore.esGenerador ? '' : '(Requiere rol Generador)'}
 				</button>
@@ -608,10 +608,10 @@
 				</div>
 			{:else}
 				<form
-					class="grid grid-cols-3 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3"
+					class="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-neutral-950/70 p-3 sm:grid-cols-3"
 					onsubmit={handleCrearUsuario}
 				>
-					<div class="col-span-3 font-bold text-teal-300">
+					<div class="col-span-full font-bold text-teal-300">
 						Nuevo Usuario del Sistema (Exclusivo Administrador)
 					</div>
 					<input
@@ -638,7 +638,7 @@
 					</select>
 					<button
 						type="submit"
-						class="col-span-3 rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950"
+						class="col-span-full rounded-lg bg-teal-500 py-1.5 font-bold text-neutral-950"
 					>
 						+ Crear Usuario
 					</button>

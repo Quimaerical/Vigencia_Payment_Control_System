@@ -102,7 +102,7 @@
 				</span>
 			</div>
 
-			<div class="grid grid-cols-2 gap-2">
+			<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 				<div>
 					<label for="sol-codigo" class="block text-[10px] text-neutral-400">Código Solicitud</label
 					>
@@ -141,7 +141,7 @@
 						{/each}
 					</select>
 				</div>
-				<div class="grid grid-cols-2 gap-1">
+				<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 					<div>
 						<label for="sol-ini" class="block text-[10px] text-neutral-400">Período Inicio</label>
 						<input

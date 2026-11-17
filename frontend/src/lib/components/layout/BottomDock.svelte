@@ -21,7 +21,7 @@
 </script>
 
 <nav
-	class="chroma-glass-dock fixed right-2 bottom-2 left-2 z-40 mx-auto flex max-w-xl items-center justify-around overflow-x-auto rounded-2xl px-2 py-1.5 shadow-2xl backdrop-blur-3xl"
+	class="chroma-glass-dock fixed right-2 bottom-2 left-2 z-40 mx-auto flex w-[calc(100%-1rem)] max-w-4xl items-center justify-around overflow-x-auto rounded-2xl px-2 py-1.5 shadow-2xl backdrop-blur-3xl md:w-[86%] lg:w-3/4"
 >
 	{#each dockItems as item (item.id)}
 		<button

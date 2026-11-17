@@ -6,7 +6,7 @@
 </script>
 
 <ModularCardWrapper id="mod-kpi-grid" title="KPIs Ejecutivos Financieros">
-	<div class="grid grid-cols-2 gap-2.5">
+	<div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
 		<!-- KPI 1: Causado -->
 		<div
 			class="flex flex-col justify-between rounded-xl border border-white/10 bg-neutral-950/70 p-3 shadow-inner transition-transform hover:scale-[1.01]"
