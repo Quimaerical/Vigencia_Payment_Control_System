@@ -15,7 +15,9 @@
 <div
 	class="modular-card chroma-glass-card relative space-y-2.5 rounded-2xl p-3.5 transition-all duration-300 {isShimmer
 		? 'shimmer-glass'
-		: ''} {workspaceStore.isCustomizing ? 'border-dashed border-teal-400' : ''}"
+		: ''} {workspaceStore.isCustomizing
+		? 'border-dashed border-teal-400'
+		: 'modular-card-interactive'}"
 	data-module-id={id}
 	data-module-name={title}
 >
