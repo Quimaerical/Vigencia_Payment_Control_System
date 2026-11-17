@@ -4,6 +4,9 @@ import type { HttpContext } from '@adonisjs/core/http'
 import UsuarioTransformer from '#transformers/usuario_transformer'
 import { esAdministrador } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
+import { paginacionValidator } from '#validators/filtros'
+import { RolUsuario } from '@app/shared'
 
 export default class UsuariosController {
   /**
@@ -14,14 +17,17 @@ export default class UsuariosController {
   }
 
   /**
-   * Lista todos los usuarios del sistema (restringido a rol 'administrador')
+   * Lista todos los usuarios del sistema (restringido a rol 'administrador') — paginado (máx. 100 por página)
    */
-  async listar({ auth, bouncer, response }: HttpContext) {
+  async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
     await bouncer.authorize(esAdministrador)
+    const { pagina, limite } = parametrosPaginacion(
+      await request.validateUsing(paginacionValidator)
+    )
 
-    const usuarios = await Usuario.query().orderBy('id', 'asc')
-    return response.status(200).json({ data: usuarios })
+    const usuarios = await Usuario.query().orderBy('id', 'asc').paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(usuarios))
   }
 
   /**
@@ -50,7 +56,10 @@ export default class UsuariosController {
   }
 
   /**
-   * Activa o desactiva lógicamente a un usuario y revoca sus tokens activos al desactivar
+   * Activa o desactiva lógicamente a un usuario y revoca sus tokens activos al desactivar.
+   * No permite desactivar al último Administrador activo: bloquea con FOR UPDATE las filas
+   * de los administradores activos para que dos desactivaciones simultáneas se serialicen
+   * (ADR 0009).
    */
   async cambiarEstado({ auth, bouncer, params, request, response }: HttpContext) {
     auth.getUserOrFail()
@@ -65,6 +74,25 @@ export default class UsuariosController {
           codigo: 'USUARIO_NO_ENCONTRADO',
           mensaje: 'El usuario especificado no existe.',
         })
+      }
+
+      if (!estaActivo && usuario.rol === RolUsuario.ADMINISTRADOR) {
+        // Orden fijo por id: las transacciones concurrentes bloquean en el mismo orden
+        const adminsActivos: { id: number }[] = await trx
+          .from('usuarios')
+          .select('id')
+          .where('rol', RolUsuario.ADMINISTRADOR)
+          .where('esta_activo', true)
+          .orderBy('id', 'asc')
+          .forUpdate()
+
+        const idsActivos = adminsActivos.map((fila) => fila.id)
+        if (idsActivos.length === 1 && idsActivos[0] === usuario.id) {
+          return response.status(422).json({
+            codigo: 'ULTIMO_ADMINISTRADOR',
+            mensaje: 'Debe existir al menos un Administrador activo en el sistema.',
+          })
+        }
       }
 
       usuario.estaActivo = estaActivo

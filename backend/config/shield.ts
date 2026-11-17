@@ -2,8 +2,8 @@ import { defineConfig } from '@adonisjs/shield'
 
 const shieldConfig = defineConfig({
   /**
-   * Configure CSP policies for your app. Refer documentation
-   * to learn more.
+   * Desactivada a propósito: la CSP la fija cabeceras_seguridad_middleware en toda
+   * respuesta, incluidos 404 que shield no ve (B3, ADR 0020).
    */
   csp: {
     /**

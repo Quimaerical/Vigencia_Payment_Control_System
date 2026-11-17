@@ -12,16 +12,24 @@ import {
   rendirValeCajaValidator,
   anularRegistroValidator,
 } from '#validators/finanzas'
-import { esGenerador, esReceptor, operarFinanzasNoAdmin } from '#abilities/main'
+import { filtrosListadoValidator } from '#validators/filtros'
+import {
+  esGenerador,
+  esReceptor,
+  leerDetalleFinanciero,
+  operarFinanzasNoAdmin,
+} from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
 
 export default class CajasChicasController {
   /**
-   * Lista todas las cajas chicas con proyecto, responsable, caja origen y vales
+   * Lista todas las cajas chicas con proyecto, responsable, caja origen y vales (roles 'generador' y 'receptor') — paginado (máx. 100 por página)
    */
-  async listar({ auth, request, response }: HttpContext) {
+  async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
-    const proyectoId = request.input('proyectoId')
+    await bouncer.authorize(leerDetalleFinanciero)
+    const filtros = await request.validateUsing(filtrosListadoValidator)
     const estado = request.input('estado')
 
     const query = CajaChica.query()
@@ -31,18 +39,20 @@ export default class CajasChicasController {
       .preload('vales', (q) => q.preload('solicitantePersona'))
       .orderBy('id', 'desc')
 
-    if (proyectoId) query.where('proyecto_id', Number(proyectoId))
+    if (filtros.proyectoId) query.where('proyecto_id', filtros.proyectoId)
     if (estado) query.where('estado', String(estado))
 
-    const cajas = await query
-    return response.status(200).json({ data: cajas })
+    const { pagina, limite } = parametrosPaginacion(filtros)
+    const cajas = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(cajas))
   }
 
   /**
-   * Muestra el detalle de una caja chica y sus vales asociados
+   * Muestra el detalle de una caja chica y sus vales asociados (roles 'generador' y 'receptor')
    */
-  async mostrar({ auth, params, response }: HttpContext) {
+  async mostrar({ auth, bouncer, params, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
 
     const caja = await CajaChica.query()
       .where('id', Number(params.id))
@@ -523,6 +533,13 @@ export default class CajasChicasController {
         .forUpdate()
         .where('id', vale.cajaChicaId)
         .firstOrFail()
+
+      if (caja.estado === EstadoCajaChica.CERRADA) {
+        return response.status(422).json({
+          codigo: 'CAJA_CHICA_CERRADA',
+          mensaje: 'No se puede anular un vale perteneciente a una caja chica ya cerrada.',
+        })
+      }
 
       if (vale.estado === EstadoValeCaja.DESEMBOLSADO) {
         caja.saldoActual = Number(

@@ -4,13 +4,18 @@ import { crearPersonaValidator, actualizarPersonaValidator } from '#validators/c
 import { cambiarEstadoActivoValidator } from '#validators/usuario'
 import { esGenerador } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
+import { paginacionValidator } from '#validators/filtros'
 
 export default class PersonasController {
   /**
-   * Lista los beneficiarios registrados (los beneficiarios no tienen usuario en el sistema)
+   * Lista los beneficiarios registrados (los beneficiarios no tienen usuario en el sistema) — paginado (máx. 100 por página)
    */
   async listar({ auth, request, response }: HttpContext) {
     auth.getUserOrFail()
+    const { pagina, limite } = parametrosPaginacion(
+      await request.validateUsing(paginacionValidator)
+    )
     const soloActivos = request.input('soloActivos')
     const query = Persona.query().orderBy('id', 'asc')
 
@@ -18,8 +23,8 @@ export default class PersonasController {
       query.where('esta_activo', true)
     }
 
-    const personas = await query
-    return response.status(200).json({ data: personas })
+    const personas = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(personas))
   }
 
   /**

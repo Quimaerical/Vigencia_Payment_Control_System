@@ -4,13 +4,18 @@ import { crearGrupoPagoValidator, actualizarGrupoPagoValidator } from '#validato
 import { cambiarEstadoActivoValidator } from '#validators/usuario'
 import { esAdministrador } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
+import { paginacionValidator } from '#validators/filtros'
 
 export default class GruposPagoController {
   /**
-   * Lista los grupos de pago con periodicidad y configuración de fechas de corte
+   * Lista los grupos de pago con periodicidad y configuración de fechas de corte — paginado (máx. 100 por página)
    */
   async listar({ auth, request, response }: HttpContext) {
     auth.getUserOrFail()
+    const { pagina, limite } = parametrosPaginacion(
+      await request.validateUsing(paginacionValidator)
+    )
     const soloActivos = request.input('soloActivos')
 
     const query = GrupoPago.query().orderBy('id', 'asc')
@@ -18,8 +23,8 @@ export default class GruposPagoController {
       query.where('esta_activo', true)
     }
 
-    const grupos = await query
-    return response.status(200).json({ data: grupos })
+    const grupos = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(grupos))
   }
 
   /**

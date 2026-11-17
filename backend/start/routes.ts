@@ -22,15 +22,25 @@ const SolicitudesPagoController = () => import('#controllers/solicitudes_pago_co
 const CajasChicasController = () => import('#controllers/cajas_chicas_controller')
 const ReportesController = () => import('#controllers/reportes_controller')
 
+/**
+ * Id de ruta: entero positivo de 1 a 9 dígitos, sin ceros a la izquierda (cabe en INTEGER).
+ * Cualquier otro valor no casa con la ruta → 404 sin llegar a PostgreSQL (M1, ADR 0015).
+ */
+const idNumerico = { match: /^[1-9]\d{0,8}$/, cast: (valor: string) => Number(valor) }
+
 router.get('/', () => {
   return { hello: 'world' }
 })
 
+/** Todo /api/v1 pasa por el límite general por IP antes de autenticar (M4, ADR 0018). */
 router
   .group(() => {
     router
       .group(() => {
-        router.post('login', [SesionesController, 'login']).as('auth.login')
+        router
+          .post('login', [SesionesController, 'login'])
+          .as('auth.login')
+          .use(middleware.limitePeticiones({ ambito: 'login' }))
       })
       .prefix('auth')
 
@@ -166,6 +176,8 @@ router
           .as('reportes.solicitud_consolidada_pdf')
         router.get('audit-logs', [ReportesController, 'auditLogs']).as('audit_logs.listar')
       })
+      .where('id', idNumerico)
       .use(middleware.auth())
   })
   .prefix('/api/v1')
+  .use(middleware.limitePeticiones({ ambito: 'api' }))

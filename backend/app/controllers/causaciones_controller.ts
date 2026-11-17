@@ -10,8 +10,10 @@ import {
   generarCausacionLoteValidator,
   anularRegistroValidator,
 } from '#validators/finanzas'
-import { esGenerador } from '#abilities/main'
+import { filtrosListadoValidator } from '#validators/filtros'
+import { esGenerador, leerDetalleFinanciero } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
 
 export default class CausacionesController {
   /**
@@ -30,13 +32,12 @@ export default class CausacionesController {
   }
 
   /**
-   * Lista las causaciones / deudas registradas con filtros por proyecto, persona, solicitud o estado
+   * Lista las causaciones / deudas registradas con filtros por proyecto, persona, solicitud o estado (roles 'generador' y 'receptor') — paginado (máx. 100 por página)
    */
-  async listar({ auth, request, response }: HttpContext) {
+  async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
-    const proyectoId = request.input('proyectoId')
-    const personaId = request.input('personaId')
-    const solicitudId = request.input('solicitudId')
+    await bouncer.authorize(leerDetalleFinanciero)
+    const filtros = await request.validateUsing(filtrosListadoValidator)
     const estado = request.input('estado')
 
     const query = Deuda.query()
@@ -47,20 +48,23 @@ export default class CausacionesController {
       .orderBy('fecha_vencimiento', 'asc')
       .orderBy('id', 'asc')
 
-    if (proyectoId) query.where('proyecto_id', Number(proyectoId))
-    if (personaId) query.where('persona_id', Number(personaId))
-    if (solicitudId) query.where('solicitud_id', Number(solicitudId))
+    if (filtros.proyectoId) query.where('proyecto_id', filtros.proyectoId)
+    if (filtros.personaId) query.where('persona_id', filtros.personaId)
+    if (filtros.solicitudId) query.where('solicitud_id', filtros.solicitudId)
     if (estado) query.where('estado', String(estado))
 
-    const deudas = await query
-    return response.status(200).json({ data: deudas })
+    const { pagina, limite } = parametrosPaginacion(filtros)
+    const deudas = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(deudas))
   }
 
   /**
-   * Simulador de prorrateo sin persistencia en base de datos
+   * Simulador de prorrateo sin persistencia en base de datos. Solo el Generador, que es quien
+   * causa; se autoriza antes de validar para no revelar reglas del cuerpo (B2, ADR 0020).
    */
-  async simular({ auth, request, response }: HttpContext) {
+  async simular({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(esGenerador)
     const { montoPeriodo, diasActivos, diasPeriodo } =
       await request.validateUsing(simularProrrateoValidator)
 

@@ -1,60 +1,102 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import db from '@adonisjs/lucid/services/db'
 import { EstadoCajaChica, EstadoDeuda, EstadoPago, EstadoValeCaja } from '@app/shared'
-import Deuda from '#models/deuda'
 import Pago from '#models/pago'
 import Proyecto from '#models/proyecto'
 import Persona from '#models/persona'
-import CajaChica from '#models/caja_chica'
-import ValeCaja from '#models/vale_caja'
 import SolicitudPago from '#models/solicitud_pago'
 import AuditLog from '#models/audit_log'
 import { generarReciboPagoPdf, generarSolicitudConsolidadaPdf } from '#services/pdf_service'
-import { esAdministrador } from '#abilities/main'
+import { esAdministrador, leerDetalleFinanciero } from '#abilities/main'
+import { filtrosAuditLogsValidator } from '#validators/filtros'
 
 export default class ReportesController {
   /**
    * Responde las preguntas clave del sistema:
    * cuánto se ha causado, cuánto se ha pagado, cuándo, a quién, por qué proyecto y cuánto se adeuda.
+   * El desglose por beneficiario (`porPersona`) es detalle financiero: solo lo reciben los
+   * roles 'generador' y 'receptor'; el administrador recibe los totales (ADR 0002).
    */
-  async resumen({ auth, response }: HttpContext) {
+  async resumen({ auth, bouncer, response }: HttpContext) {
     auth.getUserOrFail()
+    const incluirPorPersona = await bouncer.allows(leerDetalleFinanciero)
 
-    const [deudas, pagos, proyectos, personas, cajasAbiertas, valesCustodia] = await Promise.all([
-      Deuda.query().whereNot('estado', EstadoDeuda.ANULADA).preload('proyecto').preload('persona'),
-      Pago.query().where('estado', EstadoPago.PROCESADO).preload('persona'),
-      Proyecto.query().orderBy('id', 'asc'),
-      Persona.query().orderBy('id', 'asc'),
-      CajaChica.query().where('estado', EstadoCajaChica.ABIERTA),
-      ValeCaja.query().whereIn('estado', [
-        EstadoValeCaja.SOLICITADO,
-        EstadoValeCaja.APROBADO,
-        EstadoValeCaja.DESEMBOLSADO,
-      ]),
-    ])
+    const [deudasKpiRow, pagosKpiRow, cajasKpiRow, valesKpiRow, proyectos, deudasPorProyectoRows] =
+      await Promise.all([
+        db
+          .from('deudas')
+          .whereNot('estado', EstadoDeuda.ANULADA)
+          .select(
+            db.raw('COALESCE(SUM(monto_original), 0) AS total_causado'),
+            db.raw('COALESCE(SUM(saldo_pendiente), 0) AS saldo_exigible'),
+            db.raw(
+              'COALESCE(SUM(CASE WHEN saldo_pendiente > 0 THEN 1 ELSE 0 END), 0) AS pasivos_fifo_count'
+            )
+          )
+          .first(),
+        db
+          .from('pagos')
+          .where('estado', EstadoPago.PROCESADO)
+          .select(db.raw('COALESCE(SUM(monto_total), 0) AS total_pagado'))
+          .first(),
+        db
+          .from('cajas_chicas')
+          .where('estado', EstadoCajaChica.ABIERTA)
+          .select(db.raw('COALESCE(SUM(saldo_actual), 0) AS caja_chica_saldo'))
+          .first(),
+        db
+          .from('vales_caja')
+          .whereIn('estado', [
+            EstadoValeCaja.SOLICITADO,
+            EstadoValeCaja.APROBADO,
+            EstadoValeCaja.DESEMBOLSADO,
+          ])
+          .count('* AS total')
+          .first(),
+        Proyecto.query().orderBy('id', 'asc'),
+        db
+          .from('deudas')
+          .whereNot('estado', EstadoDeuda.ANULADA)
+          .groupBy('proyecto_id')
+          .select(
+            'proyecto_id',
+            db.raw('COALESCE(SUM(monto_original), 0) AS total_causado'),
+            db.raw('COALESCE(SUM(saldo_pendiente), 0) AS saldo_adeudado')
+          ),
+      ])
 
-    const totalCausado = Number(
-      deudas.reduce((acc, d) => acc + Number(d.montoOriginal), 0).toFixed(2)
-    )
-    const saldoExigible = Number(
-      deudas.reduce((acc, d) => acc + Number(d.saldoPendiente), 0).toFixed(2)
-    )
-    const totalPagado = Number(pagos.reduce((acc, p) => acc + Number(p.montoTotal), 0).toFixed(2))
-    const pasivosFifoCount = deudas.filter((d) => Number(d.saldoPendiente) > 0).length
-    const cajaChicaSaldo = Number(
-      cajasAbiertas.reduce((acc, c) => acc + Number(c.saldoActual), 0).toFixed(2)
-    )
+    const totalCausado = Number(Number(deudasKpiRow?.total_causado ?? 0).toFixed(2))
+    const saldoExigible = Number(Number(deudasKpiRow?.saldo_exigible ?? 0).toFixed(2))
+    const pasivosFifoCount = Number(deudasKpiRow?.pasivos_fifo_count ?? 0)
+    const totalPagado = Number(Number(pagosKpiRow?.total_pagado ?? 0).toFixed(2))
+    const cajaChicaSaldo = Number(Number(cajasKpiRow?.caja_chica_saldo ?? 0).toFixed(2))
+    const valesCustodiaCount = Number(valesKpiRow?.total ?? 0)
     const porcentajeCubierto =
       totalCausado > 0 ? Number(((totalPagado / totalCausado) * 100).toFixed(1)) : 0
 
+    const kpis = {
+      totalCausado,
+      totalPagado,
+      porcentajeCubierto,
+      saldoExigible,
+      pasivosFifoCount,
+      cajaChicaSaldo,
+      valesCustodiaCount,
+    }
+
+    const deudasPorProyectoMap = new Map<number, { causado: number; adeudado: number }>()
+    for (const row of deudasPorProyectoRows) {
+      deudasPorProyectoMap.set(Number(row.proyecto_id), {
+        causado: Number(Number(row.total_causado ?? 0).toFixed(2)),
+        adeudado: Number(Number(row.saldo_adeudado ?? 0).toFixed(2)),
+      })
+    }
+
     // Desglose por proyecto
     const porProyecto = proyectos.map((proy) => {
-      const deudasProy = deudas.filter((d) => d.proyectoId === proy.id)
-      const causadoProy = Number(
-        deudasProy.reduce((acc, d) => acc + Number(d.montoOriginal), 0).toFixed(2)
-      )
-      const pendienteProy = Number(
-        deudasProy.reduce((acc, d) => acc + Number(d.saldoPendiente), 0).toFixed(2)
-      )
+      const agg = deudasPorProyectoMap.get(proy.id)
+      const causadoProy = agg?.causado ?? 0
+      const pendienteProy = agg?.adeudado ?? 0
       const pagadoProy = Number((causadoProy - pendienteProy).toFixed(2))
 
       return {
@@ -69,45 +111,67 @@ export default class ReportesController {
       }
     })
 
+    // Mínimo privilegio (ADR 0002, hallazgo A1): sin detalle por beneficiario para el
+    // administrador; ni siquiera se consulta la tabla personas.
+    if (!incluirPorPersona) {
+      return response.status(200).json({ kpis, porProyecto })
+    }
+
+    const [personas, deudasPorPersonaRows, pagosPorPersonaRows] = await Promise.all([
+      Persona.query().orderBy('id', 'asc'),
+      db
+        .from('deudas')
+        .whereNot('estado', EstadoDeuda.ANULADA)
+        .groupBy('persona_id')
+        .select(
+          'persona_id',
+          db.raw('COALESCE(SUM(monto_original), 0) AS total_causado'),
+          db.raw('COALESCE(SUM(saldo_pendiente), 0) AS saldo_adeudado')
+        ),
+      db
+        .from('pagos')
+        .where('estado', EstadoPago.PROCESADO)
+        .groupBy('persona_id')
+        .select(
+          'persona_id',
+          db.raw('COALESCE(SUM(monto_total), 0) AS total_pagado'),
+          db.raw("TO_CHAR(MAX(fecha_pago), 'YYYY-MM-DD') AS fecha_ultimo_pago")
+        ),
+    ])
+
+    const deudasPorPersonaMap = new Map<number, { causado: number; adeudado: number }>()
+    for (const row of deudasPorPersonaRows) {
+      deudasPorPersonaMap.set(Number(row.persona_id), {
+        causado: Number(Number(row.total_causado ?? 0).toFixed(2)),
+        adeudado: Number(Number(row.saldo_adeudado ?? 0).toFixed(2)),
+      })
+    }
+
+    const pagosPorPersonaMap = new Map<number, { pagado: number; ultimoPago: string | null }>()
+    for (const row of pagosPorPersonaRows) {
+      pagosPorPersonaMap.set(Number(row.persona_id), {
+        pagado: Number(Number(row.total_pagado ?? 0).toFixed(2)),
+        ultimoPago: row.fecha_ultimo_pago ? String(row.fecha_ultimo_pago) : null,
+      })
+    }
+
     // Desglose de deuda y pagos por persona (beneficiario)
     const porPersona = personas.map((per) => {
-      const deudasPer = deudas.filter((d) => d.personaId === per.id)
-      const pagosPer = pagos.filter((p) => p.personaId === per.id)
-      const causadoPer = Number(
-        deudasPer.reduce((acc, d) => acc + Number(d.montoOriginal), 0).toFixed(2)
-      )
-      const adeudadoPer = Number(
-        deudasPer.reduce((acc, d) => acc + Number(d.saldoPendiente), 0).toFixed(2)
-      )
-      const pagadoPer = Number(
-        pagosPer.reduce((acc, p) => acc + Number(p.montoTotal), 0).toFixed(2)
-      )
-      const ultimoPago = pagosPer.length > 0 ? pagosPer[0].fechaPago.toISODate() : null
+      const aggDeuda = deudasPorPersonaMap.get(per.id)
+      const aggPago = pagosPorPersonaMap.get(per.id)
 
       return {
         personaId: per.id,
         identificacion: per.identificacion,
         nombreCompleto: `${per.nombres} ${per.apellidos}`,
-        totalCausado: causadoPer,
-        totalPagado: pagadoPer,
-        saldoAdeudado: adeudadoPer,
-        fechaUltimoPago: ultimoPago,
+        totalCausado: aggDeuda?.causado ?? 0,
+        totalPagado: aggPago?.pagado ?? 0,
+        saldoAdeudado: aggDeuda?.adeudado ?? 0,
+        fechaUltimoPago: aggPago?.ultimoPago ?? null,
       }
     })
 
-    return response.status(200).json({
-      kpis: {
-        totalCausado,
-        totalPagado,
-        porcentajeCubierto,
-        saldoExigible,
-        pasivosFifoCount,
-        cajaChicaSaldo,
-        valesCustodiaCount: valesCustodia.length,
-      },
-      porProyecto,
-      porPersona,
-    })
+    return response.status(200).json({ kpis, porProyecto, porPersona })
   }
 
   /**
@@ -117,26 +181,27 @@ export default class ReportesController {
     auth.getUserOrFail()
     await bouncer.authorize(esAdministrador)
 
+    const filtros = await request.validateUsing(filtrosAuditLogsValidator)
     const tablaAfectada = request.input('tablaAfectada')
     const accion = request.input('accion')
-    const usuarioId = request.input('usuarioId')
-    const limite = Math.max(1, Math.min(Number(request.input('limite', 100)) || 100, 500))
+    const limite = filtros.limite ?? 100
 
     const query = AuditLog.query().preload('usuario').orderBy('id', 'desc').limit(limite)
 
     if (tablaAfectada) query.where('tabla_afectada', String(tablaAfectada))
     if (accion) query.where('accion', String(accion))
-    if (usuarioId) query.where('usuario_id', Number(usuarioId))
+    if (filtros.usuarioId) query.where('usuario_id', filtros.usuarioId)
 
     const logs = await query
     return response.status(200).json({ data: logs })
   }
 
   /**
-   * Genera el PDF de un Recibo Individual de Pago (con detalle de amortización FIFO)
+   * Genera el PDF de un Recibo Individual de Pago (con detalle de amortización FIFO) (roles 'generador' y 'receptor')
    */
-  async reciboPagoPdf({ auth, params, response }: HttpContext) {
+  async reciboPagoPdf({ auth, bouncer, params, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
 
     const pago = await Pago.query()
       .where('id', Number(params.id))
@@ -178,10 +243,11 @@ export default class ReportesController {
   }
 
   /**
-   * Genera el PDF de una Solicitud Consolidada de Pago
+   * Genera el PDF de una Solicitud Consolidada de Pago (roles 'generador' y 'receptor')
    */
-  async solicitudConsolidadaPdf({ auth, params, response }: HttpContext) {
+  async solicitudConsolidadaPdf({ auth, bouncer, params, response }: HttpContext) {
     auth.getUserOrFail()
+    await bouncer.authorize(leerDetalleFinanciero)
 
     const solicitud = await SolicitudPago.query()
       .where('id', Number(params.id))

@@ -1,4 +1,11 @@
 import vine from '@vinejs/vine'
+import {
+  diasEnterosNoNegativos,
+  diasEnterosPositivos,
+  idEnteroPositivo,
+  montoNoNegativo,
+  montoPositivo,
+} from '#validators/filtros'
 
 const isoDateString = () =>
   vine
@@ -10,14 +17,14 @@ const isoDateString = () =>
  * Validadores para Motor de Causación y Prorrateo
  */
 export const simularProrrateoValidator = vine.create({
-  montoPeriodo: vine.number().positive().min(0.01),
-  diasActivos: vine.number().min(0),
-  diasPeriodo: vine.number().positive().min(1),
+  montoPeriodo: montoPositivo(),
+  diasActivos: diasEnterosNoNegativos(),
+  diasPeriodo: diasEnterosPositivos(),
 })
 
 export const generarCausacionLoteValidator = vine.create({
-  proyectoId: vine.number().positive(),
-  grupoPagoId: vine.number().positive().nullable().optional(),
+  proyectoId: idEnteroPositivo(),
+  grupoPagoId: idEnteroPositivo().nullable().optional(),
   periodoInicio: isoDateString(),
   periodoFin: isoDateString(),
   fechaVencimiento: isoDateString().optional(),
@@ -45,11 +52,11 @@ export const crearSolicitudPagoValidator = vine.create({
     .minLength(3)
     .maxLength(50)
     .unique({ table: 'solicitudes_pago', column: 'codigo' }),
-  proyectoId: vine.number().positive(),
-  grupoPagoId: vine.number().positive().nullable().optional(),
+  proyectoId: idEnteroPositivo(),
+  grupoPagoId: idEnteroPositivo().nullable().optional(),
   periodoInicio: isoDateString(),
   periodoFin: isoDateString(),
-  deudaIds: vine.array(vine.number().positive()).optional(),
+  deudaIds: vine.array(idEnteroPositivo()).maxLength(1000).optional(),
 })
 
 export const rechazarConMotivoValidator = vine.create({
@@ -67,20 +74,20 @@ export const abrirCajaChicaValidator = vine.create({
     .maxLength(50)
     .unique({ table: 'cajas_chicas', column: 'codigo' }),
   nombre: vine.string().trim().minLength(3).maxLength(150),
-  proyectoId: vine.number().positive(),
-  cajaOrigenId: vine.number().positive().nullable().optional(),
-  anio: vine.number().min(2020).max(2100),
-  mes: vine.number().min(1).max(12),
-  montoAsignado: vine.number().min(0),
+  proyectoId: idEnteroPositivo(),
+  cajaOrigenId: idEnteroPositivo().nullable().optional(),
+  anio: vine.number().withoutDecimals().min(2020).max(2100),
+  mes: vine.number().withoutDecimals().min(1).max(12),
+  montoAsignado: montoNoNegativo(),
 })
 
 export const solicitarValeCajaValidator = vine.create({
-  solicitantePersonaId: vine.number().positive(),
-  montoSolicitado: vine.number().positive().min(0.01),
+  solicitantePersonaId: idEnteroPositivo(),
+  montoSolicitado: montoPositivo(),
   concepto: vine.string().trim().minLength(3).maxLength(300),
 })
 
 export const rendirValeCajaValidator = vine.create({
-  montoRendido: vine.number().min(0),
+  montoRendido: montoNoNegativo(),
   comprobanteReferencia: vine.string().trim().minLength(2).maxLength(150),
 })

@@ -1,14 +1,15 @@
 import vine from '@vinejs/vine'
 import { MetodoPago } from '@app/shared'
+import { idEnteroPositivo, montoPositivo } from '#validators/filtros'
 
 /**
  * Validador para el procesamiento de pagos mediante algoritmo FIFO
  */
 export const procesarPagoValidator = vine.create({
-  personaId: vine.number().positive(),
-  proyectoId: vine.number().positive(),
-  solicitudId: vine.number().positive().nullable().optional(),
-  montoTotal: vine.number().positive().min(0.01),
+  personaId: idEnteroPositivo(),
+  proyectoId: idEnteroPositivo(),
+  solicitudId: idEnteroPositivo().nullable().optional(),
+  montoTotal: montoPositivo(),
   metodoPago: vine.enum(Object.values(MetodoPago)),
   numeroReferencia: vine
     .string()

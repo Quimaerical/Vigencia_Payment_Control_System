@@ -6,18 +6,19 @@ import Proyecto from '#models/proyecto'
 import GrupoPago from '#models/grupo_pago'
 import { crearAsignacionValidator, actualizarAsignacionValidator } from '#validators/catalogo'
 import { cambiarEstadoActivoValidator } from '#validators/usuario'
-import { esGenerador } from '#abilities/main'
+import { filtrosListadoValidator } from '#validators/filtros'
+import { esGenerador, leerDetalleFinanciero } from '#abilities/main'
 import { ejecutarTransaccionFinanciera } from '#services/transaccion_financiera'
+import { parametrosPaginacion, respuestaPaginada } from '#services/paginacion'
 
 export default class AsignacionesController {
   /**
-   * Lista las asignaciones (cruce persona + proyecto + grupo_pago)
+   * Lista las asignaciones (cruce persona + proyecto + grupo_pago) (roles 'generador' y 'receptor') — paginado (máx. 100 por página)
    */
-  async listar({ auth, request, response }: HttpContext) {
+  async listar({ auth, bouncer, request, response }: HttpContext) {
     auth.getUserOrFail()
-    const proyectoId = request.input('proyectoId')
-    const personaId = request.input('personaId')
-    const grupoPagoId = request.input('grupoPagoId')
+    await bouncer.authorize(leerDetalleFinanciero)
+    const filtros = await request.validateUsing(filtrosListadoValidator)
     const soloActivos = request.input('soloActivos')
 
     const query = Asignacion.query()
@@ -26,15 +27,16 @@ export default class AsignacionesController {
       .preload('grupoPago')
       .orderBy('id', 'asc')
 
-    if (proyectoId) query.where('proyecto_id', Number(proyectoId))
-    if (personaId) query.where('persona_id', Number(personaId))
-    if (grupoPagoId) query.where('grupo_pago_id', Number(grupoPagoId))
+    if (filtros.proyectoId) query.where('proyecto_id', filtros.proyectoId)
+    if (filtros.personaId) query.where('persona_id', filtros.personaId)
+    if (filtros.grupoPagoId) query.where('grupo_pago_id', filtros.grupoPagoId)
     if (soloActivos === 'true' || soloActivos === true) {
       query.where('esta_activo', true)
     }
 
-    const asignaciones = await query
-    return response.status(200).json({ data: asignaciones })
+    const { pagina, limite } = parametrosPaginacion(filtros)
+    const asignaciones = await query.paginate(pagina, limite)
+    return response.status(200).json(respuestaPaginada(asignaciones))
   }
 
   /**

@@ -56,6 +56,7 @@ export default defineConfig({
     () => import('@adonisjs/auth/auth_provider'),
     () => import('#providers/api_provider'),
     () => import('@adonisjs/bouncer/bouncer_provider'),
+    () => import('@adonisjs/limiter/limiter_provider'),
   ],
 
   /*
@@ -83,11 +84,6 @@ export default defineConfig({
   */
   tests: {
     suites: [
-      {
-        files: ['tests/unit/**/*.spec.{ts,js}'],
-        name: 'unit',
-        timeout: 2000,
-      },
       {
         files: ['tests/functional/**/*.spec.{ts,js}'],
         name: 'functional',
