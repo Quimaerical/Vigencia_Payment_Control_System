@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { pointerSkew } from '../../actions/pointerSkew';
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
 
 	interface Props {
@@ -13,7 +14,8 @@
 </script>
 
 <div
-	class="modular-card chroma-glass-card relative space-y-2.5 rounded-2xl p-3.5 transition-all duration-300 {isShimmer
+	use:pointerSkew={{ disabled: workspaceStore.isCustomizing }}
+	class="modular-card chroma-glass-card relative space-y-2.5 rounded-2xl p-3.5 transition-colors duration-300 {isShimmer
 		? 'shimmer-glass'
 		: ''} {workspaceStore.isCustomizing
 		? 'border-dashed border-teal-400'
