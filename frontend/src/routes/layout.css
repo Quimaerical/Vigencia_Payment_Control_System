@@ -167,7 +167,10 @@
 		-1.5px -1.5px 0px rgba(45, 212, 191, 0.22),
 		1.5px 1.5px 0px rgba(217, 70, 239, 0.18),
 		0 20px 48px -10px rgba(0, 0, 0, 0.95);
-	transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+	transition:
+		box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+		border-color 0.45s ease,
+		background-color 0.45s ease;
 }
 
 .chroma-glass-card {
@@ -180,47 +183,45 @@
 		-1.5px -1.5px 0px rgba(45, 212, 191, 0.3),
 		1.5px 1.5px 0px rgba(244, 114, 182, 0.22),
 		0 14px 34px -8px rgba(13, 78, 74, 0.08);
-	transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+	transition:
+		box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+		border-color 0.45s ease,
+		background-color 0.45s ease;
 }
 
-/* MODULAR CARD HOVER SKEW & SPECULAR SWEEP */
+/* MODULAR CARD POINTER-TRACKING SKEW & SPECULAR GLOW */
 .modular-card-interactive {
+	position: relative;
 	overflow: clip;
 	transform-origin: center center;
 	will-change: transform;
+	transform: perspective(1200px) translate3d(var(--card-tx, 0px), var(--card-ty, 0px), 0)
+		skew(var(--card-skew-x, 0deg), var(--card-skew-y, 0deg)) scale(var(--card-scale, 1));
 }
 
 .modular-card-interactive::before {
 	content: '';
 	position: absolute;
-	inset: -20%;
-	background: linear-gradient(
-		105deg,
-		transparent 38%,
-		rgba(45, 212, 191, 0.1) 48%,
-		rgba(255, 255, 255, 0.14) 52%,
-		transparent 62%
+	inset: 0;
+	background: radial-gradient(
+		520px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+		rgba(45, 212, 191, 0.085),
+		rgba(255, 255, 255, 0.04) 36%,
+		transparent 70%
 	);
-	transform: translateX(-115%) skewX(-20deg);
-	transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+	opacity: var(--glow-opacity, 0);
+	transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 	pointer-events: none;
 	z-index: 0;
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: reduce) {
 	.modular-card-interactive {
-		transition:
-			transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-			box-shadow 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-			border-color 0.34s ease;
+		transform: none !important;
 	}
 
-	.modular-card-interactive:hover {
-		transform: perspective(1000px) translateY(-4px) skewX(-1.25deg) skewY(0.45deg) scale(1.008);
-	}
-
-	.modular-card-interactive:hover::before {
-		transform: translateX(115%) skewX(-20deg);
+	.modular-card-interactive::before {
+		display: none;
 	}
 }
 
