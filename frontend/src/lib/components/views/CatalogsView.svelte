@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pointerSkew } from '../../actions/pointerSkew';
 	import { catalogStore } from '../../stores/catalogStore.svelte';
 	import { financialStore } from '../../stores/financialStore.svelte';
 	import { authStore } from '../../stores/authStore.svelte';
@@ -140,7 +141,10 @@
 </script>
 
 <section class="view-panel space-y-3" id="tab-catalogs">
-	<div class="chroma-glass-card space-y-3 rounded-2xl p-4 text-xs text-white">
+	<div
+		use:pointerSkew
+		class="modular-card-interactive chroma-glass-card space-y-3 rounded-2xl p-4 text-xs text-white"
+	>
 		<div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
 			<div>
 				<h2 class="text-sm font-bold">2.1 Gestión de Catálogos, Asignaciones y Usuarios</h2>

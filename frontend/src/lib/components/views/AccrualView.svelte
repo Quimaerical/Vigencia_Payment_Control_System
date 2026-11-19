@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pointerSkew } from '../../actions/pointerSkew';
 	import { financialStore } from '../../stores/financialStore.svelte';
 	import { workspaceStore } from '../../stores/workspaceStore.svelte';
 	import { catalogStore } from '../../stores/catalogStore.svelte';
@@ -68,7 +69,7 @@
 </script>
 
 <section class="view-panel space-y-3.5" id="tab-accrual">
-	<div class="chroma-glass-card space-y-3 rounded-2xl p-4">
+	<div use:pointerSkew class="modular-card-interactive chroma-glass-card space-y-3 rounded-2xl p-4">
 		<div class="flex items-center justify-between border-b border-white/10 pb-2">
 			<div class="flex items-center gap-2">
 				<div
@@ -156,7 +157,7 @@
 	</div>
 
 	<!-- Batch Table of Scientific Researchers -->
-	<div class="chroma-glass-card space-y-3 rounded-2xl p-4">
+	<div use:pointerSkew class="modular-card-interactive chroma-glass-card space-y-3 rounded-2xl p-4">
 		<div class="flex items-center justify-between">
 			<h3 class="text-[13px] font-bold text-white">Causaciones y Asignaciones en Trámite</h3>
 			<span class="font-mono text-[10px] text-neutral-400">

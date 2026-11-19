@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pointerSkew } from '../../actions/pointerSkew';
 	import { pettyCashStore } from '../../stores/pettyCashStore.svelte';
 	import { catalogStore } from '../../stores/catalogStore.svelte';
 	import { financialStore } from '../../stores/financialStore.svelte';
@@ -98,7 +99,10 @@
 </script>
 
 <section class="view-panel space-y-3" id="tab-petty-cash">
-	<div class="chroma-glass-card space-y-3 rounded-2xl p-4 text-xs text-white">
+	<div
+		use:pointerSkew
+		class="modular-card-interactive chroma-glass-card space-y-3 rounded-2xl p-4 text-xs text-white"
+	>
 		<div class="flex items-center justify-between border-b border-white/10 pb-2">
 			<div>
 				<h2 class="text-sm font-bold">2.4 Control de Cajas Chicas y Vales de Custodia</h2>
