@@ -23,16 +23,20 @@
 			</div>
 			<div>
 				<div class="flex items-center gap-1.5">
-					<h1 class="text-title font-headline-sm font-bold tracking-tight text-white">
+					<h1
+						class="text-title font-headline-sm font-bold tracking-tight text-slate-900 dark:text-white"
+					>
 						Vigencia Core
 					</h1>
 					<span
-						class="rounded border border-teal-400/30 bg-teal-400/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-teal-300"
+						class="rounded border border-teal-700/25 bg-teal-600/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-teal-800 dark:border-teal-400/30 dark:bg-teal-400/15 dark:text-teal-300"
 					>
 						v4.8
 					</span>
 				</div>
-				<div class="flex items-center gap-1 font-mono text-[11px] text-neutral-400">
+				<div
+					class="flex items-center gap-1 font-mono text-[11px] text-slate-600 dark:text-neutral-400"
+				>
 					<span
 						class="h-1.5 w-1.5 animate-ping rounded-full bg-emerald-accent shadow-[0_0_8px_#10B981]"
 					></span>
@@ -45,7 +49,7 @@
 		<div class="flex items-center gap-1.5">
 			<!-- Login / Session Button -->
 			<button
-				class="flex items-center gap-1 rounded-xl border border-white/15 bg-white/5 px-2.5 py-1.5 font-mono text-[10px] text-teal-300 hover:bg-white/10"
+				class="flex items-center gap-1 rounded-xl border border-slate-300/80 bg-white/75 px-2.5 py-1.5 font-mono text-[10px] font-semibold text-teal-800 hover:bg-white dark:border-white/15 dark:bg-white/5 dark:text-teal-300 dark:hover:bg-white/10"
 				onclick={() => (workspaceStore.loginModalOpen = true)}
 				title="Autenticación de Usuario"
 			>
@@ -60,8 +64,8 @@
 			<!-- Customize Workspace Mode Toggle Button -->
 			<button
 				class="text-body-sm interactive-spring flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 shadow-[0_0_12px_rgba(45,212,191,0.15)] transition-all {workspaceStore.isCustomizing
-					? 'bg-teal-400 font-bold text-neutral-950 ring-2 ring-teal-300'
-					: 'border border-teal-400/35 bg-teal-400/15 text-teal-300 hover:bg-teal-400/25'}"
+					? 'bg-teal-500 font-bold text-white ring-2 ring-teal-300 dark:bg-teal-400 dark:text-neutral-950'
+					: 'border border-teal-700/25 bg-teal-600/10 text-teal-800 hover:bg-teal-600/20 dark:border-teal-400/35 dark:bg-teal-400/15 dark:text-teal-300 dark:hover:bg-teal-400/25'}"
 				onclick={() => workspaceStore.toggleCustomizeMode()}
 				title="Personalizar Módulos"
 			>
@@ -73,7 +77,7 @@
 
 			<!-- Theme Toggle -->
 			<button
-				class="flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-amber-300 shadow-sm transition-all hover:bg-white/10 hover:text-white active:scale-95"
+				class="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-300/80 bg-white/75 text-amber-600 shadow-sm transition-all hover:bg-white hover:text-slate-900 active:scale-95 dark:border-white/15 dark:bg-white/5 dark:text-amber-300 dark:hover:bg-white/10 dark:hover:text-white"
 				onclick={() => workspaceStore.toggleTheme()}
 				title={workspaceStore.isDarkMode ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
 			>
@@ -95,18 +99,18 @@
 
 	<!-- Authenticated Role Indicator & Project Selector -->
 	<div
-		class="mt-2.5 flex items-center justify-between gap-2 border-t border-white/10 pt-2 text-[11px]"
+		class="mt-2.5 flex items-center justify-between gap-2 border-t border-slate-900/10 pt-2 text-[11px] dark:border-white/10"
 	>
 		<div class="flex items-center gap-2">
 			{#if authStore.isAuthenticated && authStore.usuarioActual}
 				<span
-					class="rounded-md border border-teal-400/30 bg-teal-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-teal-300 uppercase"
+					class="rounded-md border border-teal-700/25 bg-teal-600/12 px-2 py-0.5 font-mono text-[10px] font-bold text-teal-800 uppercase dark:border-teal-400/30 dark:bg-teal-500/20 dark:text-teal-300"
 				>
 					Rol: {authStore.usuarioActual.rol}
 				</span>
 				<button
 					type="button"
-					class="rounded-md border border-white/15 bg-white/5 px-2 py-0.5 font-mono text-[10px] text-neutral-300 hover:bg-white/10"
+					class="rounded-md border border-slate-300/80 bg-white/70 px-2 py-0.5 font-mono text-[10px] text-slate-700 hover:bg-white dark:border-white/15 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10"
 					onclick={() => (workspaceStore.loginModalOpen = true)}
 				>
 					Cambiar cuenta
@@ -114,7 +118,7 @@
 			{:else}
 				<button
 					type="button"
-					class="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-amber-300"
+					class="rounded-md border border-amber-500/40 bg-amber-100/90 px-2 py-0.5 font-mono text-[10px] font-semibold text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300"
 					onclick={() => (workspaceStore.loginModalOpen = true)}
 				>
 					Sin sesión activa — Autenticar
@@ -124,7 +128,7 @@
 
 		<select
 			aria-label="Proyecto activo"
-			class="max-w-[180px] truncate rounded-lg border border-white/15 bg-neutral-900 px-2 py-1 font-mono text-[11px] text-teal-300"
+			class="surface-input max-w-[180px] truncate rounded-lg px-2 py-1 font-mono text-[11px] font-medium text-teal-800 dark:text-teal-300"
 			bind:value={workspaceStore.activeProjectId}
 		>
 			{#each financialStore.proyectos as proy (proy.id)}

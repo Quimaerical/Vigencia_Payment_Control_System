@@ -21,14 +21,14 @@
 </script>
 
 <nav
-	class="chroma-glass-dock fixed right-2 bottom-2 left-2 z-40 mx-auto flex w-[calc(100%-1rem)] max-w-4xl items-center justify-around overflow-x-auto rounded-2xl px-2 py-1.5 shadow-2xl backdrop-blur-3xl md:w-[86%] lg:w-3/4"
+	class="chroma-glass-dock fixed right-2 bottom-2 left-2 z-40 mx-auto grid w-[calc(100%-1rem)] max-w-4xl grid-cols-4 gap-1 rounded-2xl px-2 py-1.5 shadow-2xl backdrop-blur-3xl sm:flex sm:items-center sm:justify-around sm:overflow-x-auto md:w-[86%] lg:w-3/4"
 >
 	{#each dockItems as item (item.id)}
 		<button
-			class="interactive-spring flex flex-col items-center justify-center rounded-xl px-2 py-1 transition-all duration-200 {workspaceStore.currentTab ===
+			class="interactive-spring flex flex-col items-center justify-center rounded-xl px-1.5 py-1 transition-all duration-200 sm:px-2 {workspaceStore.currentTab ===
 			item.id
-				? 'scale-105 bg-teal-500 font-bold text-neutral-950 shadow-[0_0_12px_rgba(20,184,166,0.35)]'
-				: 'text-neutral-400 hover:text-teal-300'}"
+				? 'scale-[1.03] bg-teal-600 font-bold text-white shadow-[0_0_12px_rgba(20,184,166,0.35)] dark:bg-teal-500 dark:text-neutral-950'
+				: 'text-slate-600 hover:text-teal-700 dark:text-neutral-400 dark:hover:text-teal-300'}"
 			onclick={() => workspaceStore.switchTab(item.id)}
 			title={item.label}
 		>

@@ -47,7 +47,7 @@
 
 <!-- 4. Main App Container (relative z-10) -->
 <div
-	class="relative z-10 mx-auto flex min-h-screen w-full max-w-[1440px] flex-col pb-28 md:w-[90%] lg:w-[82%] xl:w-3/4"
+	class="relative z-10 mx-auto flex min-h-screen w-full max-w-[1440px] flex-col pb-36 sm:pb-28 md:w-[90%] lg:w-[82%] xl:w-3/4"
 	id="appRoot"
 >
 	<!-- Top Sticky App Bar (z-30) -->
@@ -59,10 +59,10 @@
 	<!-- Stale-While-Revalidate Offline Status Indicator -->
 	{#if financialStore.isOffline}
 		<div
-			class="mx-2 mt-1 flex items-center justify-between rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-1 font-mono text-[10px] text-amber-300"
+			class="mx-2 mt-1 flex items-center justify-between rounded-lg border border-amber-500/35 bg-amber-50/90 px-3 py-1 font-mono text-[10px] text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-300"
 		>
 			<span class="flex items-center gap-1.5">
-				<span class="h-2 w-2 animate-pulse rounded-full bg-amber-400"></span>
+				<span class="h-2 w-2 animate-pulse rounded-full bg-amber-500 dark:bg-amber-400"></span>
 				<span>Modo Offline: Datos servidos desde la caché local sin base de datos</span>
 			</span>
 			<span>{financialStore.lastSyncTimestamp}</span>
