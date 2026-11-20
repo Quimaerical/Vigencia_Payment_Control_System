@@ -62,11 +62,21 @@ export class ApiClient {
 	}
 
 	public static getBaseUrl(): string {
+		let rawUrl = '';
 		if (typeof window !== 'undefined') {
 			const win = window as unknown as { __ENV_API_URL__?: string };
-			if (win.__ENV_API_URL__) return win.__ENV_API_URL__;
+			if (win.__ENV_API_URL__) {
+				rawUrl = win.__ENV_API_URL__;
+			}
 		}
-		return import.meta.env.VITE_API_URL || 'http://localhost:3333/api/v1';
+
+		if (!rawUrl) {
+			rawUrl =
+				import.meta.env.PUBLIC_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:3333';
+		}
+
+		const normalized = rawUrl.trim().replace(/\/+$/, '');
+		return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
 	}
 
 	public static getToken(): string | null {

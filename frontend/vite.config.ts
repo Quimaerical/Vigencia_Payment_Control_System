@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 import path from 'node:path';
 
 export default defineConfig({
+	envPrefix: ['VITE_', 'PUBLIC_'],
 	resolve: {
 		alias: {
 			'@app/shared': path.resolve(import.meta.dirname, '../packages/shared/src/index.ts')

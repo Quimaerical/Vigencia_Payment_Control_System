@@ -11,3 +11,10 @@ declare global {
 }
 
 export {};
+
+declare global {
+	interface ImportMetaEnv {
+		readonly PUBLIC_API_URL?: string;
+		readonly VITE_API_URL?: string;
+	}
+}
