@@ -36,6 +36,10 @@ class WorkspaceStore {
 		const cachedModules = StorageService.loadSnapshot<ModuloWorkspace[]>(
 			'workspace_modules',
 			MOCK_DEFAULT_MODULES
+		).map((mod) =>
+			mod.id === 'mod-project-strip' && mod.subtitulo === 'Indicador FACYT #FQ-2025'
+				? { ...mod, subtitulo: 'Resumen del proyecto activo' }
+				: mod
 		);
 		this.modules = cachedModules;
 

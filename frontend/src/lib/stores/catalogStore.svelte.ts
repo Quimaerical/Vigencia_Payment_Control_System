@@ -148,14 +148,17 @@ class CatalogStore {
 	}
 
 	// Proyectos
-	async crearProyecto(dto: CrearProyectoDTO): Promise<boolean> {
+	async crearProyecto(dto: CrearProyectoDTO, skipSync = false): Promise<boolean> {
 		const res = await ApiClient.crearProyecto(dto);
 		if (!res.data) {
 			workspaceStore.showToast(res.error || 'Error al crear proyecto', 'warning');
 			return false;
 		}
+		if (res.data.data?.id) {
+			workspaceStore.activeProjectId = res.data.data.id;
+		}
 		workspaceStore.showToast(res.data.mensaje || 'Proyecto creado', 'check_circle');
-		await this.syncAll();
+		if (!skipSync) await this.syncAll();
 		return true;
 	}
 
@@ -216,14 +219,14 @@ class CatalogStore {
 	}
 
 	// Asignaciones
-	async crearAsignacion(dto: CrearAsignacionDTO): Promise<boolean> {
+	async crearAsignacion(dto: CrearAsignacionDTO, skipSync = false): Promise<boolean> {
 		const res = await ApiClient.crearAsignacion(dto);
 		if (!res.data) {
 			workspaceStore.showToast(res.error || 'Error al crear asignación', 'warning');
 			return false;
 		}
 		workspaceStore.showToast(res.data.mensaje || 'Asignación creada', 'check_circle');
-		await this.syncAll();
+		if (!skipSync) await this.syncAll();
 		return true;
 	}
 

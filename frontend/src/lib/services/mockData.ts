@@ -215,7 +215,7 @@ export const MOCK_DEFAULT_MODULES: ModuloWorkspace[] = [
 	{
 		id: 'mod-project-strip',
 		nombre: 'Ficha de Proyecto',
-		subtitulo: 'Indicador FACYT #FQ-2025',
+		subtitulo: 'Resumen del proyecto activo',
 		icono: 'domain',
 		habilitado: true,
 		orden: 1

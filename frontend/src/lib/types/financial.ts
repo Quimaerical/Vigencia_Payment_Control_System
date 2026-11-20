@@ -54,6 +54,7 @@ export interface AsientoMayor {
 	concepto: string;
 	beneficiarioNombre: string;
 	proyectoCodigo: string;
+	solicitudCodigo?: string;
 	montoUsd: number;
 	estado: 'asentado' | 'anulado';
 	hashSha256?: string;
@@ -63,6 +64,8 @@ export interface AsientoMayor {
 export interface AsignacionTramite {
 	id: number;
 	deudaId?: number;
+	proyectoId?: number;
+	proyectoCodigo?: string;
 	beneficiarioId: number;
 	beneficiarioNombre: string;
 	beneficiarioIniciales: string;

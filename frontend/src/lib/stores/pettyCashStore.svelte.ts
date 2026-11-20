@@ -11,6 +11,7 @@ import type {
 
 class PettyCashStore {
 	cajasChicas = $state<CajaChicaDTO[]>([]);
+	lastCreatedCajaId = $state<number | null>(null);
 	isLoading = $state<boolean>(false);
 
 	constructor() {
@@ -38,14 +39,17 @@ class PettyCashStore {
 		}
 	}
 
-	async abrirCaja(dto: AbrirCajaChicaDTO): Promise<boolean> {
+	async abrirCaja(dto: AbrirCajaChicaDTO, skipSync = false): Promise<boolean> {
 		const res = await ApiClient.abrirCajaChica(dto);
 		if (!res.data) {
 			workspaceStore.showToast(res.error || 'Error al abrir caja chica', 'warning');
 			return false;
 		}
+		if (res.data.data?.id) {
+			this.lastCreatedCajaId = res.data.data.id;
+		}
 		workspaceStore.showToast(res.data.mensaje || 'Caja chica abierta exitosamente', 'check_circle');
-		await this.syncAll();
+		if (!skipSync) await this.syncAll();
 		return true;
 	}
 
@@ -60,14 +64,18 @@ class PettyCashStore {
 		return true;
 	}
 
-	async solicitarVale(cajaId: number, dto: SolicitarValeCajaDTO): Promise<boolean> {
+	async solicitarVale(
+		cajaId: number,
+		dto: SolicitarValeCajaDTO,
+		skipSync = false
+	): Promise<boolean> {
 		const res = await ApiClient.solicitarValeCaja(cajaId, dto);
 		if (!res.data) {
 			workspaceStore.showToast(res.error || 'Error al solicitar vale', 'warning');
 			return false;
 		}
 		workspaceStore.showToast(res.data.mensaje || 'Vale solicitado', 'receipt');
-		await this.syncAll();
+		if (!skipSync) await this.syncAll();
 		return true;
 	}
 
@@ -104,14 +112,14 @@ class PettyCashStore {
 		return true;
 	}
 
-	async rendirVale(valeId: number, dto: RendirValeCajaDTO): Promise<boolean> {
+	async rendirVale(valeId: number, dto: RendirValeCajaDTO, skipSync = false): Promise<boolean> {
 		const res = await ApiClient.rendirValeCaja(valeId, dto);
 		if (!res.data) {
 			workspaceStore.showToast(res.error || 'Error al rendir vale', 'warning');
 			return false;
 		}
 		workspaceStore.showToast(res.data.mensaje || 'Vale rendido con comprobante', 'done_all');
-		await this.syncAll();
+		if (!skipSync) await this.syncAll();
 		return true;
 	}
 

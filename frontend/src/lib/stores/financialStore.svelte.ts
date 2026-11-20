@@ -204,6 +204,11 @@ class FinancialStore {
 					return {
 						id: d.id,
 						deudaId: d.id,
+						proyectoId: d.proyectoId,
+						proyectoCodigo:
+							d.proyecto?.codigo ??
+							catalogStore.proyectos.find((p) => p.id === d.proyectoId)?.codigo ??
+							`PROY-${d.proyectoId}`,
 						beneficiarioId: d.personaId,
 						beneficiarioNombre: nombres,
 						beneficiarioIniciales: iniciales,
@@ -264,7 +269,16 @@ class FinancialStore {
 					const personaNombre = p.persona
 						? `${p.persona.nombres} ${p.persona.apellidos}`
 						: `Beneficiario #${p.personaId}`;
-					const proyCod = p.solicitudPago?.codigo ?? `SOL-${p.solicitudId ?? 'DIRECTO'}`;
+					const solCod =
+						p.solicitudPago?.codigo ?? (p.solicitudId ? `SOL-${p.solicitudId}` : 'DIRECTO');
+					const proyId =
+						p.solicitudPago?.proyectoId ?? p.prorrateos?.[0]?.deuda?.proyectoId ?? null;
+					const proyCod =
+						p.solicitudPago?.proyecto?.codigo ??
+						p.prorrateos?.[0]?.deuda?.proyecto?.codigo ??
+						(proyId
+							? (catalogStore.proyectos.find((pr) => pr.id === proyId)?.codigo ?? `PROY-${proyId}`)
+							: solCod);
 					return {
 						id: `#PAGO-${p.id}`,
 						pagoId: p.id,
@@ -272,6 +286,7 @@ class FinancialStore {
 						concepto: `Pago ${p.metodoPago.toUpperCase()} ${p.numeroReferencia ? `(${p.numeroReferencia})` : ''}`,
 						beneficiarioNombre: personaNombre,
 						proyectoCodigo: proyCod,
+						solicitudCodigo: solCod,
 						montoUsd: Number(p.montoTotal),
 						estado: p.estado === EstadoPago.ANULADO ? 'anulado' : 'asentado',
 						motivoReverso: p.motivoAnulacion ?? undefined
