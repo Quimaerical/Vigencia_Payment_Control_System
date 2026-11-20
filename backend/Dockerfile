@@ -42,7 +42,7 @@ COPY --from=builder /app/backend/build ./backend/build
 # Install production dependencies only (supports workspace:* for @app/shared)
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
-WORKDIR /app/backend/build
+WORKDIR /app/backend
 EXPOSE 3333
 
-CMD ["node", "bin/server.js"]
+CMD ["node", "build/bin/server.js"]
