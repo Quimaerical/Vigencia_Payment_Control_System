@@ -26,19 +26,23 @@ RUN pnpm --filter @app/backend run build
 # -------------------------------------------------------------
 # Stage 2: Production Runner
 # -------------------------------------------------------------
-FROM node:22-alpine AS runner
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3333
 ENV HOST=0.0.0.0
 
-# Copy compiled backend output from builder
-COPY --from=builder /app/backend/build ./
+# Copy workspace manifests, shared package and compiled backend output
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages ./packages
+COPY backend/package.json ./backend/package.json
+COPY --from=builder /app/backend/build ./backend/build
 
-# Install production dependencies only
-RUN npm ci --omit="dev"
+# Install production dependencies only (supports workspace:* for @app/shared)
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
+WORKDIR /app/backend/build
 EXPOSE 3333
 
 CMD ["node", "bin/server.js"]

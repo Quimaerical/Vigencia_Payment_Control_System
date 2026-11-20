@@ -71,7 +71,10 @@ test.group('Endurecimiento menor: simular solo Generador (B2)', (group) => {
     client,
   }) => {
     const admin = await crearUsuario(RolUsuario.ADMINISTRADOR, 'adm422')
-    const resp = await client.post('/api/v1/causaciones/simular').loginAs(admin).json({})
+    const resp = await client
+      .post('/api/v1/causaciones/simular')
+      .loginAs(admin)
+      .json({} as never)
     resp.assertStatus(403)
   })
 

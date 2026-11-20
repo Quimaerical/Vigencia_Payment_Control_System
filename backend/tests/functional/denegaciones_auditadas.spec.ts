@@ -109,7 +109,10 @@ test.group('Denegaciones 403 auditadas (M2)', (group) => {
       .loginAs(admin)
       .json({} as never)
     r1.assertStatus(403)
-    const r2 = await client.post('/api/v1/causaciones/lote').loginAs(admin).json({})
+    const r2 = await client
+      .post('/api/v1/causaciones/lote')
+      .loginAs(admin)
+      .json({} as never)
     r2.assertStatus(403)
     const r3 = await client.post('/api/v1/solicitudes-pago').loginAs(admin).json({})
     r3.assertStatus(403)

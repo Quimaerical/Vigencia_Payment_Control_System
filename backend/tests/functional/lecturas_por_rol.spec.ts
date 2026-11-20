@@ -152,7 +152,7 @@ test.group('Lecturas por rol: contenido del resumen (ADR 0002, hallazgo A1)', (g
       const resp = await client.get('/api/v1/reportes/resumen').loginAs(usuario)
 
       resp.assertStatus(200)
-      const body = resp.body() as {
+      const body = resp.body() as unknown as {
         porPersona: Array<{ identificacion: string; totalCausado: number }>
       }
       assert.isArray(body.porPersona)
